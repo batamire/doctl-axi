@@ -1,6 +1,6 @@
 ---
 name: do-axi
-description: Agent-ergonomic CLI for DigitalOcean wrapping doctl → TOON
+description: DigitalOcean CLI — droplets, Kubernetes (k8s/doks), App Platform (apps), databases, registry, networks (domains/firewalls/VPCs/CDN), volumes, Spaces keys, docs — wraps doctl → TOON, replaces 21 MCPs
 user-invocable: false
 metadata:
   hermes:
