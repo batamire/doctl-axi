@@ -1,9 +1,9 @@
 {
   "name": "@batamire/do-axi",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "type": "module",
-  "description": "Agent-ergonomic CLI for DigitalOcean \u2014 one AXI wrapping doctl \u2192 TOON",
+  "description": "Agent-ergonomic CLI for DigitalOcean — one AXI wrapping doctl → TOON",
   "bin": {
     "do-axi": "dist/bin/do-axi.js"
   },
@@ -17,8 +17,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@toon-format/toon": "catalog:",
-    "axi-sdk-js": "catalog:"
+    "@toon-format/toon": "^2.1.0",
+    "axi-sdk-js": "^0.1.10"
   },
   "devDependencies": {
     "@types/node": "^22",
