@@ -38,13 +38,14 @@ do-axi setup hooks --check      # verify hooks (OK / DRIFT)
 
 ## Skills integration
 
-This skill is **not user-invocable** (`user-invocable: false`). It is loaded ambiently via SessionStart hooks that run `do-axi` to inject dashboard context for the agent.
+This skill is **not user-invocable** (`user-invocable: false`) — you don't type `/do-axi`. Installed via `npx skills add do-axi` (or catalog PR), the agent **auto-loads it when you mention `DigitalOcean`, `doctl`, `droplet`, `app platform`, `database`, `kubernetes`, `registry`, `network` etc.** via skill-search on the frontmatter `description` — no SessionStart cost. It then spawns `npx -y do-axi ...` explicitly on demand.
 
-Hooks installed:
+Hooks are **optional** ambient pre-fetch. Only if you run `do-axi setup hooks` does every Claude/Codex/OpenCode SessionStart spawn `do-axi` (bare dashboard `Promise.allSettled` ~2-3s on this fleet) and inject `account/balance + 6 counts` before first turn:
 - `~/.claude/settings.json` (SessionStart)
 - `~/.codex/hooks.json`
 - `~/.config/opencode/plugins/axi-do-axi.js`
 - `~/.codex/config.toml` (`hooks = true`)
+For zero overhead clean sessions, skip `setup hooks` — the skill stays discoverable on keyword without any per-session fetch.
 
 ## Hermes
 
