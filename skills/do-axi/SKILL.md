@@ -12,8 +12,8 @@ metadata:
 
 Agent-ergonomic CLI for DigitalOcean — one AXI wrapping `doctl --output json` → TOON. Prefer this over `doctl` and `21 × *.mcp.digitalocean.com` remote MCPs.
 
-You do not need do-axi installed globally — invoke with `npx -y do-axi <command>`.
-If do-axi output shows a follow-up command starting with `do-axi`, run it as `npx -y do-axi ...` instead.
+You do not need do-axi installed globally — invoke with `npx -y @batamire/do-axi <command>`.
+If do-axi output shows a follow-up command starting with `do-axi`, run it as `npx -y @batamire/do-axi ...` instead.
 
 do-axi requires `doctl` on PATH and `DIGITALOCEAN_ACCESS_TOKEN` (or `doctl auth init`). If a command fails with `AUTH_MISSING`, ask the user to run `doctl auth init` or export the token — do not invent one. `DIGITALOCEAN_API_TOKEN` (labs compat) is also accepted as `-t` and `config.yaml` `auth-contexts` is used when no env token is set.
 
@@ -23,9 +23,9 @@ Use do-axi whenever a task touches DigitalOcean: listing or managing Droplets, K
 
 ## Workflow
 
-1. Run `npx -y do-axi` with no args for the dashboard — account, balance, and counts for droplet/app/database/kubernetes/registry/domain — when you need ambient inventory. Every command prints `help:` next steps — follow them. Skip dashboard pre-fetch on SessionStart unless `do-axi setup hooks` was explicitly installed — with zero hooks the skill stays on-demand via keyword match.
+1. Run `npx -y @batamire/do-axi` with no args for the dashboard — account, balance, and counts for droplet/app/database/kubernetes/registry/domain — when you need ambient inventory. Every command prints `help:` next steps — follow them. Skip dashboard pre-fetch on SessionStart unless `do-axi setup hooks` was explicitly installed — with zero hooks the skill stays on-demand via keyword match.
 2. Drill in command-first: `droplet list`, `droplet list --fields id,name`, `kubernetes cluster list`, `database list`, `network domain list`, `volume list`, `docs search "droplet resize"`.
-3. Target a doctl context with `--context <name>` AFTER the command, e.g. `npx -y do-axi droplet list --context work` — forwarded verbatim as `doctl --context`.
+3. Target a doctl context with `--context <name>` AFTER the command, e.g. `npx -y @batamire/do-axi droplet list --context work` — forwarded verbatim as `doctl --context`.
 4. Large text is truncated at 8k with `... [truncated N chars, use --full]` — rerun with `--full` to bypass. Filter output with `--fields id,name`.
 5. Handle empties definitively: `0 droplets` (exit 0) means no match, not failure. Handle errors as TOON `{error,code,help}` on stdout — `code: AUTH_MISSING` exit 2 means export token or `doctl auth init`.
 
@@ -44,13 +44,13 @@ commands[16]: droplet, kubernetes (alias k8s/doks), database, app, registry, net
   setup: hooks, hooks --check
 ```
 
-Installed copies also inherit the SDK built-in `update` command. Run `npx -y do-axi update --check` or `npx -y do-axi update`.
+Installed copies also inherit the SDK built-in `update` command. Run `npx -y @batamire/do-axi update --check` or `npx -y @batamire/do-axi update`.
 
-Run `npx -y do-axi --help` for global flags, or `npx -y do-axi <command> --help` for per-command usage.
+Run `npx -y @batamire/do-axi --help` for global flags, or `npx -y @batamire/do-axi <command> --help` for per-command usage.
 
 ## Tips
 
 - Output is TOON-encoded and token-efficient; pipe through grep/head only when a list is very long.
 - Every list keeps 4 fields + aggregates (`count: N of T total`, `status:` or `engine:` bucket) — use `--fields` to cut further, `--full` only when truncation hint appears.
 - Mutations are idempotent where upstream 404 on delete maps to no-op — check `help:` for the next verb.
-- Run `npx -y do-axi <noun> list --help` for per-noun flags; unknown flags fail loud `VALIDATION_ERROR` exit 2.
+- Run `npx -y @batamire/do-axi <noun> list --help` for per-noun flags; unknown flags fail loud `VALIDATION_ERROR` exit 2.

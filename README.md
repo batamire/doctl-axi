@@ -15,30 +15,30 @@ Requires [`doctl`](https://docs.digitalocean.com/reference/doctl/how-to/install/
 You don't need `do-axi` installed globally. The agent discovers it via its skill:
 
 ```bash
-npx skills add do-axi   # one-time: registers the skill (hermes devops, user-invocable: false)
+npx skills add @batamire/do-axi --skill do-axi   # one-time: registers the skill (hermes devops, user-invocable: false)
 ```
 
 Then just mention DigitalOcean jargon - `droplet`, `Kubernetes`/`k8s`, `App Platform`, `database`, `registry`, `network`/`VPC`, `Spaces`, `docs` - the agent auto-loads `skills/do-axi/SKILL.md` on keyword match and runs:
 
 ```bash
-npx -y do-axi droplet list
-npx -y do-axi droplet list --fields id,name
-npx -y do-axi kubernetes cluster list
-npx -y do-axi app list
-npx -y do-axi database list
-npx -y do-axi network domain list
-npx -y do-axi docs search "droplet resize"
-npx -y do-axi --help
-npx -y do-axi droplet list --help
+npx -y @batamire/do-axi droplet list
+npx -y @batamire/do-axi droplet list --fields id,name
+npx -y @batamire/do-axi kubernetes cluster list
+npx -y @batamire/do-axi app list
+npx -y @batamire/do-axi database list
+npx -y @batamire/do-axi network domain list
+npx -y @batamire/do-axi docs search "droplet resize"
+npx -y @batamire/do-axi --help
+npx -y @batamire/do-axi droplet list --help
 ```
 
-Bare `npx -y do-axi` (no args) prints the TOON dashboard - account, balance, and counts - on demand only. No per-session pre-fetch.
+Bare `npx -y @batamire/do-axi` (no args) prints the TOON dashboard - account, balance, and counts - on demand only. No per-session pre-fetch.
 
 ## Install alternatives (optional)
 
 ```bash
 # ad-hoc, zero install - what the skill does under the hood
-npx -y do-axi droplet list
+npx -y @batamire/do-axi droplet list
 
 # global, if you prefer a bare binary
 npm i -g do-axi        # or pnpm add -g do-axi

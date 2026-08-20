@@ -1,9 +1,9 @@
 {
-  "name": "do-axi",
+  "name": "@batamire/do-axi",
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
-  "description": "Agent-ergonomic CLI for DigitalOcean — one AXI wrapping doctl → TOON",
+  "description": "Agent-ergonomic CLI for DigitalOcean \u2014 one AXI wrapping doctl \u2192 TOON",
   "bin": {
     "do-axi": "dist/bin/do-axi.js"
   },
