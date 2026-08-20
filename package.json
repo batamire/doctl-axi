@@ -1,0 +1,35 @@
+{
+  "name": "do-axi",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Agent-ergonomic CLI for DigitalOcean — one AXI wrapping doctl → TOON",
+  "bin": {
+    "do-axi": "dist/bin/do-axi.js"
+  },
+  "files": [
+    "dist",
+    "skills/do-axi",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@toon-format/toon": "catalog:",
+    "axi-sdk-js": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4",
+    "typescript": "^5.7",
+    "vitest": "^3"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/bin/do-axi.js && tsx scripts/build-skill.ts",
+    "test": "pnpm build && vitest run",
+    "dev": "tsx src/bin/do-axi.ts"
+  },
+  "packageManager": "pnpm@11.1.1"
+}

@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: true
+
+# pnpm catalog hint for release-please / workspace deps
+catalog:
+  "@toon-format/toon": ^2.1.0
+  axi-sdk-js: ^0.1.10
