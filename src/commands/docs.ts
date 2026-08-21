@@ -1,68 +1,10 @@
 import { AxiError } from "axi-sdk-js";
 import { encode } from "@toon-format/toon";
 import { searchDocs, getDoc, truncateExcerpt, clearDocsCache } from "../lib/docs.js";
+import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const KNOWN_FLAGS = new Set(["--full", "--fields", "--help", "-h"]);
-const KNOWN_FLAGS_WITH_VALUE = new Set(["--fields"]);
+const ALLOWED_FLAGS = ["--full", "--fields"];
 
-function rejectUnknownFlags(args: string[], command: string, sub: string): void {
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (!a.startsWith("-")) continue;
-    if (a.includes("=")) {
-      const key = a.split("=")[0]!;
-      if (!KNOWN_FLAGS.has(key)) {
-        throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [
-          `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
-        ]);
-      }
-      continue;
-    }
-    if (KNOWN_FLAGS_WITH_VALUE.has(a)) {
-      // value is next arg, not a flag check
-      continue;
-    }
-    if (!KNOWN_FLAGS.has(a)) {
-      throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [
-        `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
-      ]);
-    }
-    // if flag with value, skip next
-    if (KNOWN_FLAGS_WITH_VALUE.has(a)) {
-      i++; // consume value
-    }
-  }
-}
-
-function takeBoolFlag(args: string[], flag: string): boolean {
-  const idx = args.indexOf(flag);
-  if (idx === -1) return false;
-  args.splice(idx, 1);
-  return true;
-}
-
-function takeFlagValue(args: string[], flag: string): string | undefined {
-  const idx = args.indexOf(flag);
-  if (idx !== -1) {
-    const val = args[idx + 1];
-    if (val === undefined || val.startsWith("-")) {
-      throw new AxiError(`Flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        `Run \`doctl-axi docs --help\` for available flags`,
-      ]);
-    }
-    args.splice(idx, 2);
-    return val;
-  }
-  const prefix = `${flag}=`;
-  const foundIndex = args.findIndex((a) => a.startsWith(prefix));
-  if (foundIndex !== -1) {
-    const raw = args[foundIndex]!;
-    const val = raw.slice(prefix.length);
-    args.splice(foundIndex, 1);
-    return val;
-  }
-  return undefined;
-}
 
 function applyFieldsFilter<T extends Record<string, unknown>>(items: T[], fields: string[] | null): Record<string, unknown>[] {
   if (!fields || fields.length === 0) return items as unknown as Record<string, unknown>[];
@@ -223,7 +165,7 @@ export async function docsCommand(args: string[], _context: unknown): Promise<st
   }
 
   const rawArgs = args.slice(1);
-  rejectUnknownFlags(rawArgs, "docs", sub);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi docs ${sub} --help\` for available flags`);
 
   const mutable = [...rawArgs];
   const full = takeBoolFlag(mutable, "--full");

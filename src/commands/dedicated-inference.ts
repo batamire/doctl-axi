@@ -2,8 +2,11 @@ import { AxiError } from "axi-sdk-js";
 import { doctlJson } from "../lib/doctl.js";
 import { toDedicatedInferenceToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
+import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
 const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, region: true, status: true };
+
+const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
 export const DEDICATED_INFERENCE_HELP = encode({
   command: "dedicated-inference",
@@ -18,38 +21,6 @@ export const DEDICATED_INFERENCE_HELP = encode({
   examples: ["doctl-axi dedicated-inference list", "doctl-axi dedicated-inference list --fields id,name"],
 });
 
-function rejectUnknownFlags(args: string[], command: string, sub: string): void {
-  for (const a of args) {
-    if (!a.startsWith("-")) continue;
-    if (a === "--full" || a === "--help" || a === "-h") continue;
-    if (a === "--fields" || a === "--context") continue;
-    if (a.startsWith("--fields=") || a.startsWith("--context=")) continue;
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`doctl-axi ${command} ${sub} --help\` for available flags`]);
-  }
-}
-function takeBoolFlag(args: string[], flag: string): boolean {
-  const idx = args.indexOf(flag);
-  if (idx === -1) return false;
-  args.splice(idx, 1);
-  return true;
-}
-function takeFlagValue(args: string[], flag: string): string | undefined {
-  const idx = args.indexOf(flag);
-  if (idx !== -1) {
-    const val = args[idx + 1];
-    if (val === undefined || val.startsWith("-")) throw new AxiError(`Missing value for ${flag}`, "VALIDATION_ERROR", []);
-    args.splice(idx, 2);
-    return val;
-  }
-  const prefix = `${flag}=`;
-  const foundIndex = args.findIndex((a) => a.startsWith(prefix));
-  if (foundIndex !== -1) {
-    const v = args[foundIndex].slice(prefix.length);
-    args.splice(foundIndex, 1);
-    return v;
-  }
-  return undefined;
-}
 
 export async function dedicatedInferenceCommand(args: string[], _context: unknown): Promise<string> {
   const sub = args[0];
@@ -67,7 +38,7 @@ export async function dedicatedInferenceCommand(args: string[], _context: unknow
 
 async function list(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DEDICATED_INFERENCE_HELP;
-  rejectUnknownFlags(rawArgs, "dedicated-inference", "list");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi dedicated-inference list --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");

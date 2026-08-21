@@ -12,65 +12,10 @@ import {
   toNetworkReservedIpToon,
 } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
+import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const KNOWN_FLAGS = new Set([
-  "--full",
-  "--fields",
-  "--context",
-  "--help",
-  "-h",
-]);
+const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
-const KNOWN_FLAGS_WITH_VALUE = new Set(["--fields", "--context"]);
-
-function rejectUnknownFlags(args: string[], command: string, sub: string): void {
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (!a.startsWith("-")) continue;
-    if (KNOWN_FLAGS.has(a)) {
-      if (KNOWN_FLAGS_WITH_VALUE.has(a)) {
-        // value may be next arg or = form handled elsewhere; skip validation of next
-        continue;
-      }
-      continue;
-    }
-    if (a.startsWith("--fields=") || a.startsWith("--context=")) continue;
-    // negated? treat as unknown
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [
-      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
-    ]);
-  }
-}
-
-function takeBoolFlag(args: string[], flag: string): boolean {
-  const idx = args.indexOf(flag);
-  if (idx === -1) return false;
-  args.splice(idx, 1);
-  return true;
-}
-
-function takeFlagValue(args: string[], flag: string): string | undefined {
-  const idx = args.indexOf(flag);
-  if (idx !== -1) {
-    const val = args[idx + 1];
-    if (val === undefined || val.startsWith("-")) {
-      throw new AxiError(`Flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        `Run \`doctl-axi network --help\` for usage`,
-      ]);
-    }
-    args.splice(idx, 2);
-    return val;
-  }
-  const prefix = `${flag}=`;
-  const foundIndex = args.findIndex((a) => a.startsWith(prefix));
-  if (foundIndex !== -1) {
-    const raw = args[foundIndex];
-    const val = raw.slice(prefix.length);
-    args.splice(foundIndex, 1);
-    return val;
-  }
-  return undefined;
-}
 
 export const NETWORK_HELP = encode({
   command: "network",
@@ -276,7 +221,7 @@ export async function networkCommand(args: string[], _context: unknown): Promise
 }
 
 async function handleDomain(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -338,7 +283,7 @@ async function handleDomain(verb: string, rawArgs: string[], sub: string): Promi
 }
 
 async function handleRecord(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -405,7 +350,7 @@ async function handleRecord(verb: string, rawArgs: string[], sub: string): Promi
 }
 
 async function handleFirewall(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -448,7 +393,7 @@ async function handleFirewall(verb: string, rawArgs: string[], sub: string): Pro
 }
 
 async function handleLoadBalancer(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -491,7 +436,7 @@ async function handleLoadBalancer(verb: string, rawArgs: string[], sub: string):
 }
 
 async function handleVpc(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -534,7 +479,7 @@ async function handleVpc(verb: string, rawArgs: string[], sub: string): Promise<
 }
 
 async function handlePeering(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -577,7 +522,7 @@ async function handlePeering(verb: string, rawArgs: string[], sub: string): Prom
 }
 
 async function handleCdn(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -620,7 +565,7 @@ async function handleCdn(verb: string, rawArgs: string[], sub: string): Promise<
 }
 
 async function handleCertificate(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -663,7 +608,7 @@ async function handleCertificate(verb: string, rawArgs: string[], sub: string): 
 }
 
 async function handleReservedIp(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, "network", `${sub} ${verb}`);
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");

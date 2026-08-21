@@ -3,55 +3,10 @@ import { doctlJson } from "../lib/doctl.js";
 import { toDatabaseToon, truncateField } from "../lib/toon.js";
 import type { DatabaseRaw } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
+import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const KNOWN_FLAGS = new Set(["--full", "--fields", "--context", "--help", "-h"]);
-const KNOWN_FLAGS_WITH_VALUE = new Set(["--fields", "--context"]);
+const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
-function rejectUnknownFlags(args: string[], command: string, sub: string): void {
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--") break;
-    if (!arg.startsWith("-")) continue;
-    if (arg === "--help" || arg === "-h") continue;
-    if (KNOWN_FLAGS.has(arg)) {
-      if (KNOWN_FLAGS_WITH_VALUE.has(arg)) i++;
-      continue;
-    }
-    if (arg.startsWith("--fields=") || arg.startsWith("--context=")) continue;
-    throw new AxiError(`Unknown flag: ${arg}`, "VALIDATION_ERROR", [
-      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
-    ]);
-  }
-}
-
-function takeBoolFlag(args: string[], flag: string): boolean {
-  const idx = args.indexOf(flag);
-  if (idx === -1) return false;
-  args.splice(idx, 1);
-  return true;
-}
-
-function takeFlagValue(args: string[], flag: string): string | undefined {
-  const idx = args.indexOf(flag);
-  if (idx !== -1) {
-    const val = args[idx + 1];
-    if (val === undefined || val.startsWith("-")) {
-      throw new AxiError(`flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        `Run \`doctl-axi database --help\` for available flags`,
-      ]);
-    }
-    args.splice(idx, 2);
-    return val;
-  }
-  const prefix = `${flag}=`;
-  const foundIndex = args.findIndex((a) => a.startsWith(prefix));
-  if (foundIndex !== -1) {
-    const val = args[foundIndex].slice(prefix.length);
-    args.splice(foundIndex, 1);
-    return val;
-  }
-  return undefined;
-}
 
 export const DATABASE_HELP = encode({
   command: "database",
@@ -106,7 +61,7 @@ async function databaseList(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
     return DATABASE_HELP;
   }
-  rejectUnknownFlags(rawArgs, "database", "list");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi database list --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -167,7 +122,7 @@ async function databaseList(rawArgs: string[]): Promise<string> {
 
 async function databaseGet(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
-  rejectUnknownFlags(rawArgs, "database", "get");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi database get --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -216,7 +171,7 @@ async function databaseCreate(rawArgs: string[]): Promise<string> {
 
 async function databaseDelete(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
-  rejectUnknownFlags(rawArgs, "database", "delete");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi database delete --help` for available flags");
   const args = [...rawArgs];
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));

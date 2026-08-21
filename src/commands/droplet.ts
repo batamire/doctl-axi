@@ -2,64 +2,10 @@ import { AxiError } from "axi-sdk-js";
 import { doctlJson } from "../lib/doctl.js";
 import { toDropletToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
+import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const KNOWN_FLAGS = new Set([
-  "--full",
-  "--fields",
-  "--context",
-  "--help",
-  "-h",
-]);
+const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
-const KNOWN_FLAGS_WITH_VALUE = new Set(["--fields", "--context"]);
-
-function rejectUnknownFlags(args: string[], command: string, sub: string): void {
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--") break;
-    if (!arg.startsWith("-")) continue;
-    if (arg === "--help" || arg === "-h") continue;
-    if (KNOWN_FLAGS.has(arg)) {
-      if (KNOWN_FLAGS_WITH_VALUE.has(arg)) i++;
-      continue;
-    }
-    // handle --fields=val or --context=val
-    if (arg.startsWith("--fields=") || arg.startsWith("--context=")) continue;
-    // unknown
-    throw new AxiError(`Unknown flag: ${arg}`, "VALIDATION_ERROR", [
-      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
-    ]);
-  }
-}
-
-function takeBoolFlag(args: string[], flag: string): boolean {
-  const idx = args.indexOf(flag);
-  if (idx === -1) return false;
-  args.splice(idx, 1);
-  return true;
-}
-
-function takeFlagValue(args: string[], flag: string): string | undefined {
-  const idx = args.indexOf(flag);
-  if (idx !== -1) {
-    const val = args[idx + 1];
-    if (val === undefined || val.startsWith("-")) {
-      throw new AxiError(`flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        "Run `doctl-axi droplet list --help` for available flags",
-      ]);
-    }
-    args.splice(idx, 2);
-    return val;
-  }
-  const prefix = `${flag}=`;
-  const foundIndex = args.findIndex((a) => a.startsWith(prefix));
-  if (foundIndex !== -1) {
-    const val = args[foundIndex].slice(prefix.length);
-    args.splice(foundIndex, 1);
-    return val;
-  }
-  return undefined;
-}
 
 export const DROPLET_HELP = encode({
   command: "droplet",
@@ -102,7 +48,7 @@ async function dropletList(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
     return DROPLET_HELP;
   }
-  rejectUnknownFlags(rawArgs, "droplet", "list");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi droplet list --help` for available flags");
   // copy mutable
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");

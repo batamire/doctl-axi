@@ -7,11 +7,14 @@ import {
   toRegistryGCToon,
 } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
+import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
 const ALLOWED_REPO_FIELDS: Record<string, true> = { name: true, registry: true, tagCount: true, manifestCount: true };
 const ALLOWED_TAG_FIELDS: Record<string, true> = { repository: true, tag: true, digest: true, updatedAt: true };
 const ALLOWED_MANIFEST_FIELDS: Record<string, true> = { repository: true, digest: true, tags: true, size: true };
 const ALLOWED_GC_FIELDS: Record<string, true> = { id: true, registry: true, status: true, blobsDeleted: true };
+
+const ALLOWED_FLAGS = ["--full", "--fields", "--context", "--registry"];
 
 export const REGISTRY_HELP = encode({
   command: "registry",
@@ -41,49 +44,6 @@ export const REGISTRY_HELP = encode({
   ],
 });
 
-function rejectUnknownFlags(args: string[], command: string, sub: string): void {
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--") break;
-    if (!arg.startsWith("-")) continue;
-    if (arg === "--help" || arg === "-h") continue;
-    if (arg === "--full") continue;
-    if (arg === "--fields" || arg === "--context" || arg === "--registry") continue;
-    if (arg.startsWith("--fields=") || arg.startsWith("--context=") || arg.startsWith("--registry=")) continue;
-    throw new AxiError(`Unknown flag: ${arg}`, "VALIDATION_ERROR", [
-      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
-    ]);
-  }
-}
-
-function takeBoolFlag(args: string[], flag: string): boolean {
-  const idx = args.indexOf(flag);
-  if (idx === -1) return false;
-  args.splice(idx, 1);
-  return true;
-}
-
-function takeFlagValue(args: string[], flag: string): string | undefined {
-  const idx = args.indexOf(flag);
-  if (idx !== -1) {
-    const val = args[idx + 1];
-    if (val === undefined || val.startsWith("-")) {
-      throw new AxiError(`flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        `Run \`doctl-axi registry --help\` for available flags`,
-      ]);
-    }
-    args.splice(idx, 2);
-    return val;
-  }
-  const prefix = `${flag}=`;
-  const foundIndex = args.findIndex((a) => a.startsWith(prefix));
-  if (foundIndex !== -1) {
-    const val = args[foundIndex].slice(prefix.length);
-    args.splice(foundIndex, 1);
-    return val;
-  }
-  return undefined;
-}
 
 export async function registryCommand(args: string[], _context: unknown): Promise<string> {
   const entity = args[0];
@@ -147,7 +107,7 @@ export async function registryCommand(args: string[], _context: unknown): Promis
 
 async function registryRepositoryList(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return REGISTRY_HELP;
-  rejectUnknownFlags(rawArgs, "registry", "repository list");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry repository list --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -190,7 +150,7 @@ async function registryRepositoryList(rawArgs: string[]): Promise<string> {
 
 async function registryTagList(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return REGISTRY_HELP;
-  rejectUnknownFlags(rawArgs, "registry", "tag list");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry tag list --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -230,7 +190,7 @@ async function registryTagList(rawArgs: string[]): Promise<string> {
 
 async function registryTagGet(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return REGISTRY_HELP;
-  rejectUnknownFlags(rawArgs, "registry", "tag get");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry tag get --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
@@ -262,7 +222,7 @@ async function registryTagGet(rawArgs: string[]): Promise<string> {
 
 async function registryManifestList(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return REGISTRY_HELP;
-  rejectUnknownFlags(rawArgs, "registry", "manifest list");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry manifest list --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -301,7 +261,7 @@ async function registryManifestList(rawArgs: string[]): Promise<string> {
 
 async function registryGCList(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return REGISTRY_HELP;
-  rejectUnknownFlags(rawArgs, "registry", "garbage-collection list");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry garbage-collection list --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -338,7 +298,7 @@ async function registryGCList(rawArgs: string[]): Promise<string> {
 
 async function registryGCGet(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return REGISTRY_HELP;
-  rejectUnknownFlags(rawArgs, "registry", "garbage-collection get");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry garbage-collection get --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
@@ -372,7 +332,7 @@ async function registryGCGet(rawArgs: string[]): Promise<string> {
 
 async function registryGCCreate(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return REGISTRY_HELP;
-  rejectUnknownFlags(rawArgs, "registry", "garbage-collection create");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry garbage-collection create --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
@@ -390,7 +350,7 @@ async function registryGCCreate(rawArgs: string[]): Promise<string> {
 
 async function registryGCDelete(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return REGISTRY_HELP;
-  rejectUnknownFlags(rawArgs, "registry", "garbage-collection delete");
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry garbage-collection delete --help` for available flags");
   const args = [...rawArgs];
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
