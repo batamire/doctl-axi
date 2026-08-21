@@ -269,7 +269,7 @@ async function kubernetesClusterDelete(rawArgs: string[]): Promise<string> {
     return encode({ deleted: id, help: ["doctl-axi kubernetes cluster list"] });
   }
   // if raw is object with maybe id, encode
-  return encode({ deleted: id, result: raw, help: ["doctl-axi kubernetes cluster list"] });
+  return encode({ deleted: id, help: ["doctl-axi kubernetes cluster list"] });
 }
 
 async function kubernetesClusterKubeconfig(rawArgs: string[]): Promise<string> {
@@ -450,5 +450,5 @@ async function nodePoolDelete(rawArgs: string[]): Promise<string> {
   const poolId = args[1];
   const raw = await doctlDelete<unknown>(["kubernetes", "cluster", "node-pool", "delete", clusterId, poolId], contextFlag);
   if (raw === null) return encode({ delete: "already_deleted", pool: poolId, cluster: clusterId, help: ["doctl-axi kubernetes node-pool list"] });
-  return encode({ deleted: poolId, result: raw, help: ["doctl-axi kubernetes node-pool list"] });
+  return encode({ deleted: poolId, help: ["doctl-axi kubernetes node-pool list"] });
 }

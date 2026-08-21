@@ -1009,6 +1009,82 @@ export function toDatabaseToon(raw: DatabaseRaw, full: boolean): DatabaseToon {
   };
 }
 
+// ---- Database Sub-resources ----
+// Mappers for database users/topics/pools. Field-mapped on purpose: raw doctl
+// records carry credentials (user.password) and bloat we never print.
+
+export type DatabaseUserRaw = {
+  name?: string;
+  role?: string;
+  type?: string;
+  [key: string]: unknown;
+};
+
+export type DatabaseUserToon = {
+  name: string;
+  role: string;
+  type: string;
+};
+
+export function toDatabaseUserToon(raw: DatabaseUserRaw, full: boolean): DatabaseUserToon {
+  const nameRaw = typeof raw.name === "string" ? raw.name : "";
+  const roleRaw = typeof raw.role === "string" ? raw.role : "";
+  const typeRaw = typeof raw.type === "string" ? raw.type : "";
+  return {
+    name: truncateField(nameRaw, full),
+    role: truncateField(roleRaw, full),
+    type: truncateField(typeRaw, full),
+  };
+}
+
+export type DatabaseTopicRaw = {
+  name?: string;
+  state?: string;
+  partitions?: number | string;
+  [key: string]: unknown;
+};
+
+export type DatabaseTopicToon = {
+  name: string;
+  state: string;
+  partitions: string;
+};
+
+export function toDatabaseTopicToon(raw: DatabaseTopicRaw, full: boolean): DatabaseTopicToon {
+  const nameRaw = typeof raw.name === "string" ? raw.name : "";
+  const stateRaw = typeof raw.state === "string" ? raw.state : "";
+  const partitionsRaw = raw.partitions !== undefined && raw.partitions !== null ? String(raw.partitions) : "";
+  return {
+    name: truncateField(nameRaw, full),
+    state: truncateField(stateRaw, full),
+    partitions: truncateField(partitionsRaw, full),
+  };
+}
+
+export type DatabasePoolRaw = {
+  name?: string;
+  mode?: string;
+  size?: number | string;
+  [key: string]: unknown;
+};
+
+export type DatabasePoolToon = {
+  name: string;
+  mode: string;
+  size: string;
+};
+
+export function toDatabasePoolToon(raw: DatabasePoolRaw, full: boolean): DatabasePoolToon {
+  const nameRaw = typeof raw.name === "string" ? raw.name : "";
+  const modeRaw = typeof raw.mode === "string" ? raw.mode : "";
+  const sizeRaw = raw.size !== undefined && raw.size !== null ? String(raw.size) : "";
+  return {
+    name: truncateField(nameRaw, full),
+    mode: truncateField(modeRaw, full),
+    size: truncateField(sizeRaw, full),
+  };
+}
+
 export function toNodePoolToon(raw: NodePoolRaw, full: boolean): NodePoolToon {
   const idRaw = raw.id;
   const id = idRaw !== undefined && idRaw !== null ? String(idRaw) : "";

@@ -1,7 +1,12 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson } from "../lib/doctl.js";
-import { toDatabaseToon, truncateField } from "../lib/toon.js";
-import type { DatabaseRaw } from "../lib/toon.js";
+import {
+  toDatabasePoolToon,
+  toDatabaseTopicToon,
+  toDatabaseToon,
+  toDatabaseUserToon,
+} from "../lib/toon.js";
+import type { DatabasePoolRaw, DatabaseRaw, DatabaseTopicRaw, DatabaseUserRaw } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
 import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
@@ -197,7 +202,7 @@ async function databaseDelete(rawArgs: string[]): Promise<string> {
   const raw = await doctlDelete<unknown>(["databases", "delete", id], contextFlag);
   if (raw === null) return encode({ delete: "already_deleted", database: id, help: ["doctl-axi database list"] });
   if (Array.isArray(raw) && raw.length === 0) return encode({ deleted: id, help: ["doctl-axi database list"] });
-  return encode({ deleted: id, result: raw, help: ["doctl-axi database list"] });
+  return encode({ deleted: id, help: ["doctl-axi database list"] });
 }
 
 // Generic helpers for sub-resources
@@ -256,14 +261,7 @@ async function databaseUser(rawArgs: string[]): Promise<string> {
     const raw = await doctlJson<unknown>(["databases", "user", "list", dbId], contextFlag);
     const arr = Array.isArray(raw) ? raw : [];
     if (arr.length === 0) return "0 users";
-    const mapped = arr.map((item) => {
-      const rec = item as Record<string, unknown>;
-      // user fields: name, role, type, state
-      const name = typeof rec["name"] === "string" ? truncateField(rec["name"] as string, full) : "";
-      const role = typeof rec["role"] === "string" ? truncateField(rec["role"] as string, full) : "";
-      const type = typeof rec["type"] === "string" ? truncateField(rec["type"] as string, full) : "";
-      return { name, role, type };
-    });
+    const mapped = arr.map((item) => toDatabaseUserToon(item as unknown as DatabaseUserRaw, full));
     const rows = fields
       ? mapped.map((u) => {
           const obj: Record<string, unknown> = {};
@@ -278,21 +276,23 @@ async function databaseUser(rawArgs: string[]): Promise<string> {
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database user get --help` for available flags");
     const raw = await doctlJson<unknown>(["databases", "user", "get", remaining[0], remaining[1]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-    return encode({ user: rec, help: ["doctl-axi database user list"] });
+    if (!rec || typeof rec !== "object") throw new AxiError(`User ${remaining[1]} not found`, "NOT_FOUND", []);
+    return encode({ user: toDatabaseUserToon(rec as unknown as DatabaseUserRaw, full), help: ["doctl-axi database user list"] });
   }
   if (action === "create") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database user create <db-id> <user>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database user create --help` for available flags");
     const raw = await doctlJson<unknown>(["databases", "user", "create", remaining[0], remaining[1]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-    return encode({ user: rec, help: ["doctl-axi database user list"] });
+    if (!rec || typeof rec !== "object") throw new AxiError(`User create failed: unexpected doctl output`, "VALIDATION_ERROR", ["doctl-axi database user list"]);
+    return encode({ user: toDatabaseUserToon(rec as unknown as DatabaseUserRaw, full), help: ["doctl-axi database user list"] });
   }
   if (action === "delete") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database user delete <db-id> <user>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database user delete --help` for available flags");
     const raw = await doctlDelete<unknown>(["databases", "user", "delete", remaining[0], remaining[1]], contextFlag);
     if (raw === null) return encode({ delete: "already_deleted", user: remaining[1], database: remaining[0], help: ["doctl-axi database user list"] });
-    return encode({ deleted: remaining[1], result: raw, help: ["doctl-axi database user list"] });
+    return encode({ deleted: remaining[1], help: ["doctl-axi database user list"] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: list, get, create, delete"]);
 }
@@ -313,13 +313,7 @@ async function databaseTopic(rawArgs: string[]): Promise<string> {
     const raw = await doctlJson<unknown>(["databases", "topic", "list", remaining[0]], contextFlag);
     const arr = Array.isArray(raw) ? raw : [];
     if (arr.length === 0) return "0 topics";
-    const mapped = arr.map((item) => {
-      const rec = item as Record<string, unknown>;
-      const name = typeof rec["name"] === "string" ? truncateField(rec["name"] as string, full) : "";
-      const state = typeof rec["state"] === "string" ? truncateField(rec["state"] as string, full) : "";
-      const partitions = rec["partitions"] !== undefined ? String(rec["partitions"]) : "";
-      return { name, state, partitions };
-    });
+    const mapped = arr.map((item) => toDatabaseTopicToon(item as unknown as DatabaseTopicRaw, full));
     const rows = fields
       ? mapped.map((t) => {
           const obj: Record<string, unknown> = {};
@@ -334,21 +328,23 @@ async function databaseTopic(rawArgs: string[]): Promise<string> {
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database topic get --help` for available flags");
     const raw = await doctlJson<unknown>(["databases", "topic", "get", remaining[0], remaining[1]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-    return encode({ topic: rec, help: ["doctl-axi database topic list"] });
+    if (!rec || typeof rec !== "object") throw new AxiError(`Topic ${remaining[1]} not found`, "NOT_FOUND", []);
+    return encode({ topic: toDatabaseTopicToon(rec as unknown as DatabaseTopicRaw, full), help: ["doctl-axi database topic list"] });
   }
   if (action === "create") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database topic create <db-id> <topic>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database topic create --help` for available flags");
     const raw = await doctlJson<unknown>(["databases", "topic", "create", remaining[0], remaining[1]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-    return encode({ topic: rec, help: ["doctl-axi database topic list"] });
+    if (!rec || typeof rec !== "object") throw new AxiError(`Topic create failed: unexpected doctl output`, "VALIDATION_ERROR", ["doctl-axi database topic list"]);
+    return encode({ topic: toDatabaseTopicToon(rec as unknown as DatabaseTopicRaw, full), help: ["doctl-axi database topic list"] });
   }
   if (action === "delete") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database topic delete <db-id> <topic>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database topic delete --help` for available flags");
     const raw = await doctlDelete<unknown>(["databases", "topic", "delete", remaining[0], remaining[1]], contextFlag);
     if (raw === null) return encode({ delete: "already_deleted", topic: remaining[1], database: remaining[0], help: ["doctl-axi database topic list"] });
-    return encode({ deleted: remaining[1], result: raw, help: ["doctl-axi database topic list"] });
+    return encode({ deleted: remaining[1], help: ["doctl-axi database topic list"] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: list, get, create, delete"]);
 }
@@ -368,13 +364,7 @@ async function databasePool(rawArgs: string[]): Promise<string> {
     const raw = await doctlJson<unknown>(["databases", "pool", "list", remaining[0]], contextFlag);
     const arr = Array.isArray(raw) ? raw : [];
     if (arr.length === 0) return "0 pools";
-    const mapped = arr.map((item) => {
-      const rec = item as Record<string, unknown>;
-      const name = typeof rec["name"] === "string" ? truncateField(rec["name"] as string, full) : "";
-      const mode = typeof rec["mode"] === "string" ? truncateField(rec["mode"] as string, full) : "";
-      const size = rec["size"] !== undefined ? String(rec["size"]) : "";
-      return { name, mode, size };
-    });
+    const mapped = arr.map((item) => toDatabasePoolToon(item as unknown as DatabasePoolRaw, full));
     const rows = fields
       ? mapped.map((p) => {
           const obj: Record<string, unknown> = {};
@@ -389,21 +379,23 @@ async function databasePool(rawArgs: string[]): Promise<string> {
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database pool get --help` for available flags");
     const raw = await doctlJson<unknown>(["databases", "pool", "get", remaining[0], remaining[1]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-    return encode({ pool: rec, help: ["doctl-axi database pool list"] });
+    if (!rec || typeof rec !== "object") throw new AxiError(`Pool ${remaining[1]} not found`, "NOT_FOUND", []);
+    return encode({ pool: toDatabasePoolToon(rec as unknown as DatabasePoolRaw, full), help: ["doctl-axi database pool list"] });
   }
   if (action === "create") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database pool create <db-id> <pool>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database pool create --help` for available flags");
     const raw = await doctlJson<unknown>(["databases", "pool", "create", remaining[0], remaining[1]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-    return encode({ pool: rec, help: ["doctl-axi database pool list"] });
+    if (!rec || typeof rec !== "object") throw new AxiError(`Pool create failed: unexpected doctl output`, "VALIDATION_ERROR", ["doctl-axi database pool list"]);
+    return encode({ pool: toDatabasePoolToon(rec as unknown as DatabasePoolRaw, full), help: ["doctl-axi database pool list"] });
   }
   if (action === "delete") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database pool delete <db-id> <pool>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database pool delete --help` for available flags");
     const raw = await doctlDelete<unknown>(["databases", "pool", "delete", remaining[0], remaining[1]], contextFlag);
     if (raw === null) return encode({ delete: "already_deleted", pool: remaining[1], database: remaining[0], help: ["doctl-axi database pool list"] });
-    return encode({ deleted: remaining[1], result: raw, help: ["doctl-axi database pool list"] });
+    return encode({ deleted: remaining[1], help: ["doctl-axi database pool list"] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: list, get, create, delete"]);
 }

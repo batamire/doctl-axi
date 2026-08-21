@@ -586,4 +586,76 @@ describe("doctl-axi database list CLI seam", () => {
     expect(decoded.code).toBe("VALIDATION_ERROR");
     expect(String(decoded.error)).toContain("Unknown flag");
   });
+
+  it("database user get never leaks password, even with --full", () => {
+    const json = JSON.stringify({ name: "doadmin", role: "primary", type: "normal", password: "s3cret-pw-value" });
+    makeFakeDoctl(tmp, json);
+    for (const extra of [[], ["--full"]]) {
+      const res = runCli(["database", "user", "get", "db-1", "doadmin", ...extra], {
+        fakeDir: tmp,
+        env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+      });
+      expect(res.status).toBe(0);
+      expect(res.stdout).not.toContain("password");
+      expect(res.stdout).not.toContain("s3cret-pw-value");
+      const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+      const user = decoded.user as Record<string, unknown>;
+      expect(user.name).toBe("doadmin");
+      expect("password" in user).toBe(false);
+    }
+  });
+
+  it("database user create never leaks password, even with --full", () => {
+    const json = JSON.stringify({ name: "appuser", role: "custom", type: "normal", password: "s3cret-create-pw" });
+    makeFakeDoctl(tmp, json);
+    for (const extra of [[], ["--full"]]) {
+      const res = runCli(["database", "user", "create", "db-1", "appuser", ...extra], {
+        fakeDir: tmp,
+        env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+      });
+      expect(res.status).toBe(0);
+      expect(res.stdout).not.toContain("password");
+      expect(res.stdout).not.toContain("s3cret-create-pw");
+      const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+      const user = decoded.user as Record<string, unknown>;
+      expect(user.name).toBe("appuser");
+      expect("password" in user).toBe(false);
+    }
+  });
+
+  it("database get/create never leak connection.uri, even with --full", () => {
+    const secretUri = "postgresql://doadmin:s3cret-uri@db-1.b.db.ondigitalocean.com:25060/defaultdb";
+    const record = { id: "db-1", name: "prod-pg", engine: "pg", version: "15", region: "nyc1", status: "online", connection: { uri: secretUri } };
+    for (const extra of [[], ["--full"]]) {
+      makeFakeDoctl(tmp, JSON.stringify(record));
+      const resGet = runCli(["database", "get", "db-1", ...extra], {
+        fakeDir: tmp,
+        env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+      });
+      expect(resGet.status).toBe(0);
+      expect(resGet.stdout).not.toContain("uri");
+      expect(resGet.stdout).not.toContain("s3cret-uri");
+
+      const resCreate = runCli(["database", "create", "prod-pg", ...extra], {
+        fakeDir: tmp,
+        env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+      });
+      expect(resCreate.status).toBe(0);
+      expect(resCreate.stdout).not.toContain("uri");
+      expect(resCreate.stdout).not.toContain("s3cret-uri");
+    }
+  });
+
+  it("database delete does not echo raw doctl result", () => {
+    const json = JSON.stringify({ some: "upstream noise" });
+    makeFakeDoctl(tmp, json);
+    const res = runCli(["database", "delete", "db-1"], {
+      fakeDir: tmp,
+      env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+    });
+    expect(res.status).toBe(0);
+    const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+    expect(decoded.deleted).toBe("db-1");
+    expect(decoded.result).toBeUndefined();
+  });
 });
