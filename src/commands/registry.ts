@@ -359,6 +359,6 @@ async function registryGCDelete(rawArgs: string[]): Promise<string> {
   if (!id) throw new AxiError("Missing id for registry garbage-collection delete", "VALIDATION_ERROR", ["Usage: doctl-axi registry garbage-collection delete <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection delete --help`"]);
   const raw = await doctlDelete<unknown>(["registry", "garbage-collection", "cancel", id], contextFlag);
-  if (raw === null) return encode({ delete: "already_deleted", garbage_collection: id, help: ["doctl-axi registry garbage-collection list for overview"] });
-  return encode({ deleted: id, help: ["doctl-axi registry garbage-collection list for overview"] });
+  if (raw === null) return encode({ cancel: "already_cancelled", garbage_collection: id, help: ["doctl-axi registry garbage-collection list for overview"] });
+  return encode({ cancelled: id, help: ["doctl-axi registry garbage-collection list for overview"] });
 }

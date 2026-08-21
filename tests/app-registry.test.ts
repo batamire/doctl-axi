@@ -413,7 +413,7 @@ describe("doctl-axi registry CLI seam", () => {
     const res = runCli(["registry", "garbage-collection", "delete", "gc-111"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.deleted).toBe("gc-111");
+    expect(decoded.cancelled).toBe("gc-111");
     const args = readFileSync(capture, "utf-8");
     expect(args).toContain("cancel");
   });

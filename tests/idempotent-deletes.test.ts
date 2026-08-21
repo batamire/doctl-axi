@@ -93,12 +93,12 @@ describe("doctl-axi idempotent deletes CLI seam", () => {
     expect(decoded.domain).toBe("example.test");
   });
 
-  it("registry garbage-collection delete against upstream 404 exits 0 with already_deleted", () => {
+  it("registry garbage-collection cancel against upstream 404 exits 0 with already_cancelled", () => {
     makeFakeDoctlNotFound(tmp);
     const res = runCli(["registry", "garbage-collection", "delete", "gc-gone"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.delete).toBe("already_deleted");
+    expect(decoded.cancel).toBe("already_cancelled");
     expect(decoded.garbage_collection).toBe("gc-gone");
   });
 
