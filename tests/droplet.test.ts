@@ -4,6 +4,10 @@ import { mkdtempSync, writeFileSync, chmodSync, rmSync, readFileSync } from "nod
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { decode } from "@toon-format/toon";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
 const BIN = "./dist/bin/do-axi.js";
 
@@ -228,7 +232,7 @@ describe("do-axi droplet list CLI seam", () => {
   it("fast-path --version prints version without SDK init", () => {
     const res = spawnSync("node", [BIN, "--version"], { encoding: "utf-8" });
     expect(res.status).toBe(0);
-    expect(res.stdout.trim()).toBe("0.1.0");
+    expect(res.stdout.trim()).toBe(PKG_VERSION);
     // ensure no help text
     expect(res.stdout).not.toContain("usage");
   });

@@ -4,24 +4,15 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-catalogs:
-  default:
-    '@toon-format/toon':
-      specifier: ^2.1.0
-      version: 2.3.1
-    axi-sdk-js:
-      specifier: ^0.1.10
-      version: 0.1.10
-
 importers:
 
   .:
     dependencies:
       '@toon-format/toon':
-        specifier: 'catalog:'
+        specifier: ^2.1.0
         version: 2.3.1
       axi-sdk-js:
-        specifier: 'catalog:'
+        specifier: ^0.1.10
         version: 0.1.10
     devDependencies:
       '@types/node':

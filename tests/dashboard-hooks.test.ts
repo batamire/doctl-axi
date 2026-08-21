@@ -207,7 +207,7 @@ describe("dashboard + hooks + packaging", () => {
 
   it("package.json fields correct", () => {
     const pkg = JSON.parse(readFileSync("package.json", "utf-8")) as Record<string, unknown>;
-    expect(pkg.name).toBe("do-axi");
+    expect(pkg.name).toBe("doctl-axi");
     expect((pkg.bin as Record<string, string>)["do-axi"]).toBe("dist/bin/do-axi.js");
     expect((pkg.engines as Record<string, string>).node).toMatch(/>=20/);
     expect(pkg.packageManager).toMatch(/^pnpm@/);

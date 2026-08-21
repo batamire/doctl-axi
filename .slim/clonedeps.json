@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-08-21T00:00:00.000Z",
+  "dependencies": [
+    {
+      "name": "axi (framework)",
+      "resolvedVersion": "HEAD 6df2cdc",
+      "repoUrl": "https://github.com/kunchenguid/axi.git",
+      "ref": "main",
+      "path": ".slim/clonedeps/repos/kunchenguid__axi",
+      "reason": "Framework repo: axi-sdk-js SDK (runAxiCli, AxiError, update.ts self-update, hooks.ts) that do-axi's design is modeled on"
+    },
+    {
+      "name": "gh-axi",
+      "resolvedVersion": "HEAD",
+      "repoUrl": "https://github.com/kunchenguid/gh-axi.git",
+      "ref": "main",
+      "path": ".slim/clonedeps/repos/kunchenguid__gh-axi",
+      "reason": "Reference AXI example: shared args.ts/toon.ts/fields.ts/errors.ts architecture and idempotent-mutation patterns to emulate"
+    },
+    {
+      "name": "chrome-devtools-axi",
+      "resolvedVersion": "HEAD",
+      "repoUrl": "https://github.com/kunchenguid/chrome-devtools-axi.git",
+      "ref": "main",
+      "path": ".slim/clonedeps/repos/kunchenguid__chrome-devtools-axi",
+      "reason": "Second reference AXI example: session-oriented command surface, suggestions engine, sdk built-in update wiring"
+    }
+  ]
+}
