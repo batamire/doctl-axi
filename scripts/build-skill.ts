@@ -3,8 +3,8 @@ import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from
 import { dirname, join } from "node:path";
 
 const root = join(dirname(new URL(import.meta.url).pathname), "..");
-const src = join(root, "skills/do-axi/SKILL.md");
-const outDir = join(root, "dist/skills/do-axi");
+const src = join(root, "skills/doctl-axi/SKILL.md");
+const outDir = join(root, "dist/skills/doctl-axi");
 const out = join(outDir, "SKILL.md");
 
 if (!existsSync(src)) {
@@ -20,7 +20,7 @@ const skillContent = readFileSync(src, "utf-8");
 const nameMatch = skillContent.match(/^name:\s*(.+)$/m);
 const descMatch = skillContent.match(/^description:\s*(.+)$/m);
 const manifest = {
-  name: nameMatch?.[1]?.trim() ?? "do-axi",
+  name: nameMatch?.[1]?.trim() ?? "doctl-axi",
   description: descMatch?.[1]?.trim() ?? "Agent-ergonomic CLI for DigitalOcean",
   version: JSON.parse(readFileSync(join(root, "package.json"), "utf-8")).version,
   entry: "SKILL.md",

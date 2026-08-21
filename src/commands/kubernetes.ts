@@ -19,7 +19,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     }
     if (arg.startsWith("--fields=") || arg.startsWith("--context=")) continue;
     throw new AxiError(`Unknown flag: ${arg}`, "VALIDATION_ERROR", [
-      `Run \`do-axi ${command} ${sub} --help\` for available flags`,
+      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
     ]);
   }
 }
@@ -37,7 +37,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
     const val = args[idx + 1];
     if (val === undefined || val.startsWith("-")) {
       throw new AxiError(`flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        `Run \`do-axi kubernetes --help\` for available flags`,
+        `Run \`doctl-axi kubernetes --help\` for available flags`,
       ]);
     }
     args.splice(idx, 2);
@@ -56,7 +56,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
 export const KUBERNETES_HELP = encode({
   command: "kubernetes",
   description: "Manage Kubernetes clusters and node pools",
-  usage: "do-axi kubernetes <subcommand> [flags]",
+  usage: "doctl-axi kubernetes <subcommand> [flags]",
   subcommands: {
     "cluster list": "List Kubernetes clusters",
     "cluster get": "Get a Kubernetes cluster by id",
@@ -74,11 +74,11 @@ export const KUBERNETES_HELP = encode({
     "--context": "doctl context name",
   },
   examples: [
-    "do-axi kubernetes cluster list",
-    "do-axi kubernetes cluster list --fields id,name",
-    "do-axi kubernetes cluster get <id>",
-    "do-axi kubernetes cluster kubeconfig <id>",
-    "do-axi kubernetes node-pool list <cluster-id>",
+    "doctl-axi kubernetes cluster list",
+    "doctl-axi kubernetes cluster list --fields id,name",
+    "doctl-axi kubernetes cluster get <id>",
+    "doctl-axi kubernetes cluster kubeconfig <id>",
+    "doctl-axi kubernetes node-pool list <cluster-id>",
   ],
 });
 
@@ -92,7 +92,7 @@ export async function kubernetesCommand(args: string[], _context: unknown): Prom
     if (!sub || sub.startsWith("-")) {
       throw new AxiError("Missing subcommand for kubernetes cluster", "VALIDATION_ERROR", [
         "Available: list, get, create, delete, kubeconfig",
-        "Run `do-axi kubernetes --help`",
+        "Run `doctl-axi kubernetes --help`",
       ]);
     }
     if (sub === "list") return kubernetesClusterList(args.slice(2));
@@ -102,7 +102,7 @@ export async function kubernetesCommand(args: string[], _context: unknown): Prom
     if (sub === "kubeconfig") return kubernetesClusterKubeconfig(args.slice(2));
     throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
       "Available: list, get, create, delete, kubeconfig",
-      "Run `do-axi kubernetes --help`",
+      "Run `doctl-axi kubernetes --help`",
     ]);
   }
   if (noun === "node-pool" || noun === "node_pool" || noun === "nodepool") {
@@ -110,7 +110,7 @@ export async function kubernetesCommand(args: string[], _context: unknown): Prom
     if (!sub || sub.startsWith("-")) {
       throw new AxiError("Missing subcommand for kubernetes node-pool", "VALIDATION_ERROR", [
         "Available: list, get, create, delete",
-        "Run `do-axi kubernetes --help`",
+        "Run `doctl-axi kubernetes --help`",
       ]);
     }
     if (sub === "list") return nodePoolList(args.slice(2));
@@ -119,12 +119,12 @@ export async function kubernetesCommand(args: string[], _context: unknown): Prom
     if (sub === "delete") return nodePoolDelete(args.slice(2));
     throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
       "Available: list, get, create, delete",
-      "Run `do-axi kubernetes --help`",
+      "Run `doctl-axi kubernetes --help`",
     ]);
   }
   throw new AxiError(`Unknown subcommand: ${noun}`, "VALIDATION_ERROR", [
     "Available: cluster, node-pool",
-    "Run `do-axi kubernetes --help`",
+    "Run `doctl-axi kubernetes --help`",
   ]);
 }
 
@@ -140,12 +140,12 @@ async function kubernetesClusterList(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi kubernetes cluster list --help` for available flags",
+      "Run `doctl-axi kubernetes cluster list --help` for available flags",
     ]);
   }
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi kubernetes cluster list --help`",
+      "Run `doctl-axi kubernetes cluster list --help`",
     ]);
   }
   const allowed = new Set(["id", "name", "region", "status"]);
@@ -186,7 +186,7 @@ async function kubernetesClusterList(rawArgs: string[]): Promise<string> {
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${totalCount} total`,
     clusters: filtered,
-    help: [`kubernetes cluster get ${mapped[0].id} for detail`, "do-axi kubernetes cluster list --full"],
+    help: [`kubernetes cluster get ${mapped[0].id} for detail`, "doctl-axi kubernetes cluster list --full"],
   };
   return encode(payload);
 }
@@ -203,14 +203,14 @@ async function kubernetesClusterGet(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi kubernetes cluster get --help` for available flags",
+      "Run `doctl-axi kubernetes cluster get --help` for available flags",
     ]);
   }
   if (args.length === 0) {
-    throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: do-axi kubernetes cluster get <id>"]);
+    throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes cluster get <id>"]);
   }
   if (args.length > 1) {
-    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: do-axi kubernetes cluster get <id>"]);
+    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes cluster get <id>"]);
   }
   const id = args[0];
   const allowed = new Set(["id", "name", "region", "status"]);
@@ -236,7 +236,7 @@ async function kubernetesClusterGet(rawArgs: string[]): Promise<string> {
   }
   const payload: Record<string, unknown> = {
     cluster: filtered,
-    help: ["do-axi kubernetes cluster list --full"],
+    help: ["doctl-axi kubernetes cluster list --full"],
   };
   return encode(payload);
 }
@@ -262,10 +262,10 @@ async function kubernetesClusterCreate(rawArgs: string[]): Promise<string> {
   const raw = await doctlJson<unknown>(["kubernetes", "cluster", "create", ...args], contextFlag);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
   if (!rec || typeof rec !== "object") {
-    return encode({ result: raw, help: ["do-axi kubernetes cluster list"] });
+    return encode({ result: raw, help: ["doctl-axi kubernetes cluster list"] });
   }
   const mapped = toKubernetesToon(rec as unknown as KubernetesRaw, full);
-  return encode({ cluster: mapped as unknown as Record<string, unknown>, help: ["do-axi kubernetes cluster list"] });
+  return encode({ cluster: mapped as unknown as Record<string, unknown>, help: ["doctl-axi kubernetes cluster list"] });
 }
 
 async function kubernetesClusterDelete(rawArgs: string[]): Promise<string> {
@@ -278,20 +278,20 @@ async function kubernetesClusterDelete(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi kubernetes cluster delete --help` for available flags",
+      "Run `doctl-axi kubernetes cluster delete --help` for available flags",
     ]);
   }
   if (args.length === 0) {
-    throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: do-axi kubernetes cluster delete <id>"]);
+    throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes cluster delete <id>"]);
   }
   const id = args[0];
   const raw = await doctlJson<unknown>(["kubernetes", "cluster", "delete", id], contextFlag);
   // delete may return empty or object
   if (Array.isArray(raw) && raw.length === 0) {
-    return encode({ deleted: id, help: ["do-axi kubernetes cluster list"] });
+    return encode({ deleted: id, help: ["doctl-axi kubernetes cluster list"] });
   }
   // if raw is object with maybe id, encode
-  return encode({ deleted: id, result: raw, help: ["do-axi kubernetes cluster list"] });
+  return encode({ deleted: id, result: raw, help: ["doctl-axi kubernetes cluster list"] });
 }
 
 async function kubernetesClusterKubeconfig(rawArgs: string[]): Promise<string> {
@@ -308,14 +308,14 @@ async function kubernetesClusterKubeconfig(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi kubernetes cluster kubeconfig --help` for available flags",
+      "Run `doctl-axi kubernetes cluster kubeconfig --help` for available flags",
     ]);
   }
   if (args.length === 0) {
-    throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: do-axi kubernetes cluster kubeconfig <id>"]);
+    throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes cluster kubeconfig <id>"]);
   }
   if (args.length > 1) {
-    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: do-axi kubernetes cluster kubeconfig <id>"]);
+    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes cluster kubeconfig <id>"]);
   }
   const id = args[0];
   // Try doctl kubeconfig show path: kubernetes cluster kubeconfig show <id>
@@ -371,15 +371,15 @@ async function nodePoolList(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi kubernetes node-pool list --help` for available flags",
+      "Run `doctl-axi kubernetes node-pool list --help` for available flags",
     ]);
   }
   if (args.length === 0) {
-    throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: do-axi kubernetes node-pool list <cluster-id>"]);
+    throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes node-pool list <cluster-id>"]);
   }
   const clusterId = args[0];
   if (args.length > 1) {
-    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: do-axi kubernetes node-pool list <cluster-id>"]);
+    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes node-pool list <cluster-id>"]);
   }
   const allowed = new Set(["id", "name", "size", "count", "status"]);
   let fields: string[] | null = null;
@@ -411,7 +411,7 @@ async function nodePoolList(rawArgs: string[]): Promise<string> {
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     pools: filtered,
-    help: ["do-axi kubernetes node-pool list --full"],
+    help: ["doctl-axi kubernetes node-pool list --full"],
   };
   return encode(payload);
 }
@@ -427,11 +427,11 @@ async function nodePoolGet(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi kubernetes node-pool get --help` for available flags",
+      "Run `doctl-axi kubernetes node-pool get --help` for available flags",
     ]);
   }
   if (args.length < 2) {
-    throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: do-axi kubernetes node-pool get <cluster-id> <pool-id>"]);
+    throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes node-pool get <cluster-id> <pool-id>"]);
   }
   const clusterId = args[0];
   const poolId = args[1];
@@ -439,7 +439,7 @@ async function nodePoolGet(rawArgs: string[]): Promise<string> {
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
   if (!rec || typeof rec !== "object") throw new AxiError(`Node pool ${poolId} not found`, "NOT_FOUND", []);
   const mapped = toNodePoolToon(rec as unknown as NodePoolRaw, full);
-  return encode({ pool: mapped as unknown as Record<string, unknown>, help: ["do-axi kubernetes node-pool list"] });
+  return encode({ pool: mapped as unknown as Record<string, unknown>, help: ["doctl-axi kubernetes node-pool list"] });
 }
 
 async function nodePoolCreate(rawArgs: string[]): Promise<string> {
@@ -450,14 +450,14 @@ async function nodePoolCreate(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
   // remaining includes clusterId + flags
-  if (args.length === 0) throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: do-axi kubernetes node-pool create <cluster-id> [flags]"]);
+  if (args.length === 0) throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes node-pool create <cluster-id> [flags]"]);
   const clusterId = args[0];
   const rest = args.slice(1);
   const raw = await doctlJson<unknown>(["kubernetes", "cluster", "node-pool", "create", clusterId, ...rest], contextFlag);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-  if (!rec || typeof rec !== "object") return encode({ result: raw, help: ["do-axi kubernetes node-pool list"] });
+  if (!rec || typeof rec !== "object") return encode({ result: raw, help: ["doctl-axi kubernetes node-pool list"] });
   const mapped = toNodePoolToon(rec as unknown as NodePoolRaw, full);
-  return encode({ pool: mapped as unknown as Record<string, unknown>, help: ["do-axi kubernetes node-pool list"] });
+  return encode({ pool: mapped as unknown as Record<string, unknown>, help: ["doctl-axi kubernetes node-pool list"] });
 }
 
 async function nodePoolDelete(rawArgs: string[]): Promise<string> {
@@ -469,11 +469,11 @@ async function nodePoolDelete(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
-    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi kubernetes node-pool delete --help`"]);
+    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi kubernetes node-pool delete --help`"]);
   }
-  if (args.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: do-axi kubernetes node-pool delete <cluster-id> <pool-id>"]);
+  if (args.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes node-pool delete <cluster-id> <pool-id>"]);
   const clusterId = args[0];
   const poolId = args[1];
   const raw = await doctlJson<unknown>(["kubernetes", "cluster", "node-pool", "delete", clusterId, poolId], contextFlag);
-  return encode({ deleted: poolId, result: raw, help: ["do-axi kubernetes node-pool list"] });
+  return encode({ deleted: poolId, result: raw, help: ["doctl-axi kubernetes node-pool list"] });
 }

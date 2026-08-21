@@ -8,14 +8,14 @@ const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, region: tru
 export const NFS_HELP = encode({
   command: "nfs",
   description: "Manage NFS file shares",
-  usage: "do-axi nfs <subcommand> [flags]",
+  usage: "doctl-axi nfs <subcommand> [flags]",
   subcommands: { list: "List NFS shares", get: "Get an NFS share by id" },
   flags: {
     "--full": "Disable truncation (show complete field values)",
     "--fields": "Comma-separated fields to display (id,name,region,status)",
     "--context": "doctl context name",
   },
-  examples: ["do-axi nfs list", "do-axi nfs list --fields id,name", "do-axi nfs get <id>"],
+  examples: ["doctl-axi nfs list", "doctl-axi nfs list --fields id,name", "doctl-axi nfs get <id>"],
 });
 
 function rejectUnknownFlags(args: string[], command: string, sub: string): void {
@@ -24,7 +24,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (a === "--full" || a === "--help" || a === "-h") continue;
     if (a === "--fields" || a === "--context") continue;
     if (a.startsWith("--fields=") || a.startsWith("--context=")) continue;
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`do-axi ${command} ${sub} --help\` for available flags`]);
+    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`doctl-axi ${command} ${sub} --help\` for available flags`]);
   }
 }
 function takeBoolFlag(args: string[], flag: string): boolean {
@@ -37,7 +37,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
   if (idx !== -1) {
     const val = args[idx + 1];
-    if (val === undefined || val.startsWith("-")) throw new AxiError(`Missing value for ${flag}`, "VALIDATION_ERROR", ["Run `do-axi nfs list --help`"]);
+    if (val === undefined || val.startsWith("-")) throw new AxiError(`Missing value for ${flag}`, "VALIDATION_ERROR", ["Run `doctl-axi nfs list --help`"]);
     args.splice(idx, 2);
     return val;
   }
@@ -55,12 +55,12 @@ export async function nfsCommand(args: string[], _context: unknown): Promise<str
   const sub = args[0];
   if (!sub || sub.startsWith("-")) {
     if (sub === "--help" || sub === "-h") return NFS_HELP;
-    throw new AxiError("Missing subcommand for nfs", "VALIDATION_ERROR", ["Available: list, get", "Run `do-axi nfs --help`"]);
+    throw new AxiError("Missing subcommand for nfs", "VALIDATION_ERROR", ["Available: list, get", "Run `doctl-axi nfs --help`"]);
   }
   if (sub === "--help" || sub === "-h") return NFS_HELP;
   if (sub === "list") return nfsList(args.slice(1));
   if (sub === "get") return nfsGet(args.slice(1));
-  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list, get", "Run `do-axi nfs --help`"]);
+  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list, get", "Run `doctl-axi nfs --help`"]);
 }
 
 async function nfsList(rawArgs: string[]): Promise<string> {
@@ -71,8 +71,8 @@ async function nfsList(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi nfs list --help` for available flags"]);
-  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `do-axi nfs list --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi nfs list --help` for available flags"]);
+  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi nfs list --help`"]);
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -105,7 +105,7 @@ async function nfsList(rawArgs: string[]): Promise<string> {
     count: `${mapped.length} of ${totalCount} total`,
     status: `available ${available}/${mapped.length}`,
     nfs: filtered,
-    help: [`nfs get ${mapped[0].id} for detail`, "do-axi nfs list --full for complete fields"],
+    help: [`nfs get ${mapped[0].id} for detail`, "doctl-axi nfs list --full for complete fields"],
   };
   return encode(payload);
 }
@@ -117,14 +117,14 @@ async function nfsGet(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   rejectUnknownFlags(args, "nfs", "get");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi nfs get --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi nfs get --help`"]);
   const id = args[0];
-  if (!id) throw new AxiError("Missing id for nfs get", "VALIDATION_ERROR", ["Usage: do-axi nfs get <id>"]);
-  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `do-axi nfs get --help`"]);
+  if (!id) throw new AxiError("Missing id for nfs get", "VALIDATION_ERROR", ["Usage: doctl-axi nfs get <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi nfs get --help`"]);
   const raw = await doctlJson<unknown>(["nfs", "get", id], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "share" in (raw as Record<string, unknown>)
     ? ((raw as Record<string, unknown>).share as unknown)
     : raw;
   const mapped = toNfsToon(obj as never, full);
-  return encode({ nfs: mapped as unknown as Record<string, unknown>, help: ["do-axi nfs list for overview"] });
+  return encode({ nfs: mapped as unknown as Record<string, unknown>, help: ["doctl-axi nfs list for overview"] });
 }

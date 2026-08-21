@@ -8,7 +8,7 @@ const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, region: tru
 export const VOLUME_HELP = encode({
   command: "volume",
   description: "Manage block storage volumes",
-  usage: "do-axi volume <subcommand> [flags]",
+  usage: "doctl-axi volume <subcommand> [flags]",
   subcommands: {
     list: "List volumes",
     get: "Get a volume by id",
@@ -19,10 +19,10 @@ export const VOLUME_HELP = encode({
     "--context": "doctl context name",
   },
   examples: [
-    "do-axi volume list",
-    "do-axi volume list --fields id,name",
-    "do-axi volume list --full",
-    "do-axi volume get <id>",
+    "doctl-axi volume list",
+    "doctl-axi volume list --fields id,name",
+    "doctl-axi volume list --full",
+    "doctl-axi volume get <id>",
   ],
 });
 
@@ -35,7 +35,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (a.startsWith("--fields=") || a.startsWith("--context=")) continue;
     // allow -h already, but any other - prefixed is unknown
     throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [
-      `Run \`do-axi ${command} ${sub} --help\` for available flags`,
+      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
     ]);
   }
 }
@@ -53,7 +53,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
     const val = args[idx + 1];
     if (val === undefined || val.startsWith("-")) {
       throw new AxiError(`Missing value for ${flag}`, "VALIDATION_ERROR", [
-        `Run \`do-axi volume list --help\``,
+        `Run \`doctl-axi volume list --help\``,
       ]);
     }
     args.splice(idx, 2);
@@ -75,7 +75,7 @@ export async function volumeCommand(args: string[], _context: unknown): Promise<
     if (sub === "--help" || sub === "-h") return VOLUME_HELP;
     throw new AxiError("Missing subcommand for volume", "VALIDATION_ERROR", [
       "Available: list, get",
-      "Run `do-axi volume --help`",
+      "Run `doctl-axi volume --help`",
     ]);
   }
   if (sub === "--help" || sub === "-h") return VOLUME_HELP;
@@ -83,7 +83,7 @@ export async function volumeCommand(args: string[], _context: unknown): Promise<
   if (sub === "get") return volumeGet(args.slice(1));
   throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
     "Available: list, get",
-    "Run `do-axi volume --help`",
+    "Run `doctl-axi volume --help`",
   ]);
 }
 
@@ -98,12 +98,12 @@ async function volumeList(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi volume list --help` for available flags",
+      "Run `doctl-axi volume list --help` for available flags",
     ]);
   }
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi volume list --help`",
+      "Run `doctl-axi volume list --help`",
     ]);
   }
 
@@ -149,7 +149,7 @@ async function volumeList(rawArgs: string[]): Promise<string> {
     count: `${mapped.length} of ${totalCount} total`,
     status: `available ${available}/${mapped.length}`,
     volumes: filtered,
-    help: [`volume get ${mapped[0].id} for detail`, "do-axi volume list --full for complete fields"],
+    help: [`volume get ${mapped[0].id} for detail`, "doctl-axi volume list --full for complete fields"],
   };
   return encode(payload);
 }
@@ -165,20 +165,20 @@ async function volumeGet(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi volume get --help` for available flags",
+      "Run `doctl-axi volume get --help` for available flags",
     ]);
   }
   const id = args[0];
   if (!id) {
-    throw new AxiError("Missing id for volume get", "VALIDATION_ERROR", ["Usage: do-axi volume get <id>"]);
+    throw new AxiError("Missing id for volume get", "VALIDATION_ERROR", ["Usage: doctl-axi volume get <id>"]);
   }
   if (args.length > 1) {
-    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `do-axi volume get --help`"]);
+    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi volume get --help`"]);
   }
   const raw = await doctlJson<unknown>(["compute", "volume", "get", id], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "volume" in (raw as Record<string, unknown>)
     ? ((raw as Record<string, unknown>).volume as unknown)
     : raw;
   const mapped = toVolumeToon(obj as never, full);
-  return encode({ volume: mapped as unknown as Record<string, unknown>, help: ["do-axi volume list for overview"] });
+  return encode({ volume: mapped as unknown as Record<string, unknown>, help: ["doctl-axi volume list for overview"] });
 }

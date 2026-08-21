@@ -1,6 +1,6 @@
 ---
-name: do-axi
-description: Use do-axi when user mentions DigitalOcean, doctl, droplets, Kubernetes (k8s/doks), App Platform, databases, registry, networks (domains/firewalls/VPCs/CDN), volumes, Spaces keys, docs — replaces 21 MCPs via doctl → TOON
+name: doctl-axi
+description: Use doctl-axi when user mentions DigitalOcean, doctl, droplets, Kubernetes (k8s/doks), App Platform, databases, registry, networks (domains/firewalls/VPCs/CDN), volumes, Spaces keys, docs — replaces 21 MCPs via doctl → TOON
 user-invocable: false
 metadata:
   hermes:
@@ -8,22 +8,22 @@ metadata:
     tags: [digitalocean, doctl, droplet, kubernetes, doks, app-platform, database, registry, networking, vpc, spaces, docs]
 ---
 
-# do-axi
+# doctl-axi
 
 Agent-ergonomic CLI for DigitalOcean — one AXI wrapping `doctl --output json` → TOON. Prefer this over `doctl` and `21 × *.mcp.digitalocean.com` remote MCPs.
 
-You do not need do-axi installed globally — invoke with `npx -y doctl-axi <command>`.
-If do-axi output shows a follow-up command starting with `do-axi`, run it as `npx -y doctl-axi ...` instead.
+You do not need doctl-axi installed globally — invoke with `npx -y doctl-axi <command>`.
+If doctl-axi output shows a follow-up command starting with `doctl-axi`, run it as `npx -y doctl-axi ...` instead.
 
-do-axi requires `doctl` on PATH and `DIGITALOCEAN_ACCESS_TOKEN` (or `doctl auth init`). If a command fails with `AUTH_MISSING`, ask the user to run `doctl auth init` or export the token — do not invent one. `DIGITALOCEAN_API_TOKEN` (labs compat) is also accepted as `-t` and `config.yaml` `auth-contexts` is used when no env token is set.
+doctl-axi requires `doctl` on PATH and `DIGITALOCEAN_ACCESS_TOKEN` (or `doctl auth init`). If a command fails with `AUTH_MISSING`, ask the user to run `doctl auth init` or export the token — do not invent one. `DIGITALOCEAN_API_TOKEN` (labs compat) is also accepted as `-t` and `config.yaml` `auth-contexts` is used when no env token is set.
 
 ## When to use
 
-Use do-axi whenever a task touches DigitalOcean: listing or managing Droplets, Kubernetes clusters and node pools, App Platform apps and deployments, Database clusters and users/topics/pools, Container Registry repositories/tags/manifests, Networks (domains, DNS records, certificates, firewalls, load balancers, VPCs, peerings, CDNs, reserved IPs), block Volumes, NFS shares, Spaces access keys, account/balance/regions, or searching DigitalOcean docs. Skip bucket/object ops — Spaces is keys-only.
+Use doctl-axi whenever a task touches DigitalOcean: listing or managing Droplets, Kubernetes clusters and node pools, App Platform apps and deployments, Database clusters and users/topics/pools, Container Registry repositories/tags/manifests, Networks (domains, DNS records, certificates, firewalls, load balancers, VPCs, peerings, CDNs, reserved IPs), block Volumes, NFS shares, Spaces access keys, account/balance/regions, or searching DigitalOcean docs. Skip bucket/object ops — Spaces is keys-only.
 
 ## Workflow
 
-1. Run `npx -y doctl-axi` with no args for the dashboard — account, balance, and counts for droplet/app/database/kubernetes/registry/domain — when you need ambient inventory. Every command prints `help:` next steps — follow them. Skip dashboard pre-fetch on SessionStart unless `do-axi setup hooks` was explicitly installed — with zero hooks the skill stays on-demand via keyword match.
+1. Run `npx -y doctl-axi` with no args for the dashboard — account, balance, and counts for droplet/app/database/kubernetes/registry/domain — when you need ambient inventory. Every command prints `help:` next steps — follow them. Skip dashboard pre-fetch on SessionStart unless `doctl-axi setup hooks` was explicitly installed — with zero hooks the skill stays on-demand via keyword match.
 2. Drill in command-first: `droplet list`, `droplet list --fields id,name`, `kubernetes cluster list`, `database list`, `network domain list`, `volume list`, `docs search "droplet resize"`.
 3. Target a doctl context with `--context <name>` AFTER the command, e.g. `npx -y doctl-axi droplet list --context work` — forwarded verbatim as `doctl --context`.
 4. Large text is truncated at 8k with `... [truncated N chars, use --full]` — rerun with `--full` to bypass. Filter output with `--fields id,name`.

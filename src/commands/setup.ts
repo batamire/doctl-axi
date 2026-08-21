@@ -6,8 +6,8 @@ import { AxiError, installSessionStartHooks } from "axi-sdk-js";
 
 export const SETUP_HELP = encode({
   command: "setup",
-  description: "Manage do-axi setup including ambient hooks",
-  usage: "do-axi setup <subcommand> [flags]",
+  description: "Manage doctl-axi setup including ambient hooks",
+  usage: "doctl-axi setup <subcommand> [flags]",
   subcommands: {
     hooks: "Install ambient SessionStart hooks for Claude/Codex/OpenCode",
   },
@@ -15,7 +15,7 @@ export const SETUP_HELP = encode({
     "--check": "Verify installed hooks vs expected (report OK or DRIFT)",
     "--help": "Show help",
   },
-  examples: ["do-axi setup hooks", "do-axi setup hooks --check"],
+  examples: ["doctl-axi setup hooks", "doctl-axi setup hooks --check"],
 });
 
 function hasMarkerInFile(path: string, marker: string): boolean {
@@ -28,7 +28,7 @@ function hasMarkerInFile(path: string, marker: string): boolean {
   }
 }
 
-function checkHooksDrift(marker = "do-axi"): { drift: boolean; details: Record<string, unknown> } {
+function checkHooksDrift(marker = "doctl-axi"): { drift: boolean; details: Record<string, unknown> } {
   const home = homedir();
   const claudeSettings = join(home, ".claude", "settings.json");
   const codexHooks = join(home, ".codex", "hooks.json");
@@ -80,7 +80,7 @@ export async function setupCommand(args: string[], _context: unknown): Promise<s
   }
   const sub = args[0];
   if (sub !== "hooks") {
-    throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: hooks", "Run `do-axi setup --help`"]);
+    throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: hooks", "Run `doctl-axi setup --help`"]);
   }
   const rest = args.slice(1);
   if (rest.includes("--help") || rest.includes("-h")) {
@@ -89,25 +89,25 @@ export async function setupCommand(args: string[], _context: unknown): Promise<s
   // validate flags
   for (const a of rest) {
     if (a.startsWith("-") && a !== "--check") {
-      throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `do-axi setup hooks --help`"]);
+      throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `doctl-axi setup hooks --help`"]);
     }
   }
   const check = rest.includes("--check");
   if (check) {
-    const { drift, details } = checkHooksDrift("do-axi");
+    const { drift, details } = checkHooksDrift("doctl-axi");
     if (drift) {
       return encode({
         code: "DRIFT",
         status: "drift detected",
         hooks: details,
-        help: ["do-axi setup hooks to reinstall"],
+        help: ["doctl-axi setup hooks to reinstall"],
       });
     }
     return encode({
       code: "OK",
       status: "hooks installed",
       hooks: details,
-      help: ["do-axi setup hooks --check to verify"],
+      help: ["doctl-axi setup hooks --check to verify"],
     });
   }
 
@@ -123,19 +123,19 @@ export async function setupCommand(args: string[], _context: unknown): Promise<s
   }
 
   // after install, verify — if still drift (e.g., execPath ends with .ts via tsx), report DRIFT not OK
-  const { drift: driftAfter, details: detailsAfter } = checkHooksDrift("do-axi");
+  const { drift: driftAfter, details: detailsAfter } = checkHooksDrift("doctl-axi");
   if (driftAfter) {
     return encode({
       code: "DRIFT",
       status: "drift detected",
       hooks: detailsAfter,
-      help: ["do-axi setup hooks to reinstall"],
+      help: ["doctl-axi setup hooks to reinstall"],
     });
   }
   return encode({
     code: "OK",
     status: "hooks installed",
     hooks: detailsAfter,
-    help: ["do-axi setup hooks --check to verify"],
+    help: ["doctl-axi setup hooks --check to verify"],
   });
 }

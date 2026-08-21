@@ -8,14 +8,14 @@ const ALLOWED_FIELDS: Record<string, true> = { slug: true, name: true, type: tru
 export const MARKETPLACE_HELP = encode({
   command: "marketplace",
   description: "List DigitalOcean marketplace (1-click) offerings",
-  usage: "do-axi marketplace <subcommand> [flags]",
+  usage: "doctl-axi marketplace <subcommand> [flags]",
   subcommands: { list: "List marketplace offerings" },
   flags: {
     "--full": "Disable truncation",
     "--fields": "Comma-separated fields to display (slug,name,type)",
     "--context": "doctl context name",
   },
-  examples: ["do-axi marketplace list", "do-axi marketplace list --fields slug,name"],
+  examples: ["doctl-axi marketplace list", "doctl-axi marketplace list --fields slug,name"],
 });
 
 function rejectUnknownFlags(args: string[], command: string, sub: string): void {
@@ -24,7 +24,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (a === "--full" || a === "--help" || a === "-h") continue;
     if (a === "--fields" || a === "--context") continue;
     if (a.startsWith("--fields=") || a.startsWith("--context=")) continue;
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`do-axi ${command} ${sub} --help\` for available flags`]);
+    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`doctl-axi ${command} ${sub} --help\` for available flags`]);
   }
 }
 function takeBoolFlag(args: string[], flag: string): boolean {
@@ -55,11 +55,11 @@ export async function marketplaceCommand(args: string[], _context: unknown): Pro
   const sub = args[0];
   if (!sub || sub.startsWith("-")) {
     if (sub === "--help" || sub === "-h") return MARKETPLACE_HELP;
-    throw new AxiError("Missing subcommand for marketplace", "VALIDATION_ERROR", ["Available: list", "Run `do-axi marketplace --help`"]);
+    throw new AxiError("Missing subcommand for marketplace", "VALIDATION_ERROR", ["Available: list", "Run `doctl-axi marketplace --help`"]);
   }
   if (sub === "--help" || sub === "-h") return MARKETPLACE_HELP;
   if (sub === "list") return list(args.slice(1));
-  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list", "Run `do-axi marketplace --help`"]);
+  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list", "Run `doctl-axi marketplace --help`"]);
 }
 
 async function list(rawArgs: string[]): Promise<string> {
@@ -70,8 +70,8 @@ async function list(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
   const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `do-axi marketplace list --help`"]);
-  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `do-axi marketplace list --help`"]);
+  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi marketplace list --help`"]);
+  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi marketplace list --help`"]);
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -101,7 +101,7 @@ async function list(rawArgs: string[]): Promise<string> {
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     marketplace: filtered,
-    help: ["do-axi marketplace list --full for complete fields"],
+    help: ["doctl-axi marketplace list --full for complete fields"],
   };
   return encode(payload);
 }

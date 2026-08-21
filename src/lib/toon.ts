@@ -96,7 +96,7 @@ export function encodeDropletList(
   if (droplets.length > 0) {
     const firstId = droplets[0].id;
     help.push(`droplet get ${firstId} for detail`);
-    help.push(`do-axi droplet list --full for complete fields`);
+    help.push(`doctl-axi droplet list --full for complete fields`);
   }
 
   // Use encode with tabular array

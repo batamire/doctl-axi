@@ -1,16 +1,15 @@
 {
   "name": "doctl-axi",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "license": "MIT",
   "type": "module",
   "description": "Agent-ergonomic CLI for DigitalOcean — one AXI wrapping doctl → TOON",
   "bin": {
-    "do-axi": "dist/bin/do-axi.js",
-    "doctl-axi": "dist/bin/do-axi.js"
+    "doctl-axi": "dist/bin/doctl-axi.js"
   },
   "files": [
     "dist",
-    "skills/do-axi",
+    "skills/doctl-axi",
     "LICENSE",
     "README.md"
   ],
@@ -28,9 +27,9 @@
     "vitest": "^3"
   },
   "scripts": {
-    "build": "tsc && chmod +x dist/bin/do-axi.js && tsx scripts/build-skill.ts",
+    "build": "tsc && chmod +x dist/bin/doctl-axi.js && tsx scripts/build-skill.ts",
     "test": "pnpm build && vitest run",
-    "dev": "tsx src/bin/do-axi.ts"
+    "dev": "tsx src/bin/doctl-axi.ts"
   },
   "packageManager": "pnpm@11.1.1"
 }

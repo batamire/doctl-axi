@@ -2,23 +2,23 @@
 >
 > This is an experimental proof-of-concept AXI (Agent Experience Interface) - an AI-built wrapper around `doctl` as an alternative to 21 fragmented MCP services. Not production-hardened; expect sharp edges, token truncation at 8k, and `10 MB` maxBuffer limits. Use for evaluation and feedback, not critical deploys.
 
-# do-axi
+# doctl-axi
 
 Agent-ergonomic CLI for DigitalOcean - one AXI wrapping `doctl --output json` → [TOON](https://github.com/toon-format/toon).
 
-Replaces 21 fragmented MCP services (`*.mcp.digitalocean.com`) with a single `do-axi <noun> <verb>` surface. No global install required - the skill is the primary entry point.
+Replaces 21 fragmented MCP services (`*.mcp.digitalocean.com`) with a single `doctl-axi <noun> <verb>` surface. No global install required - the skill is the primary entry point.
 
 ## Quick start - skill is the intended usage
 
 Requires [`doctl`](https://docs.digitalocean.com/reference/doctl/how-to/install/) authenticated (`doctl auth init` or `DIGITALOCEAN_ACCESS_TOKEN`).
 
-You don't need `do-axi` installed globally. The agent discovers it via its skill:
+You don't need `doctl-axi` installed globally. The agent discovers it via its skill:
 
 ```bash
-npx skills add doctl-axi --skill do-axi   # one-time: registers the skill (hermes devops, user-invocable: false)
+npx skills add doctl-axi --skill doctl-axi   # one-time: registers the skill (hermes devops, user-invocable: false)
 ```
 
-Then just mention DigitalOcean jargon - `droplet`, `Kubernetes`/`k8s`, `App Platform`, `database`, `registry`, `network`/`VPC`, `Spaces`, `docs` - the agent auto-loads `skills/do-axi/SKILL.md` on keyword match and runs:
+Then just mention DigitalOcean jargon - `droplet`, `Kubernetes`/`k8s`, `App Platform`, `database`, `registry`, `network`/`VPC`, `Spaces`, `docs` - the agent auto-loads `skills/doctl-axi/SKILL.md` on keyword match and runs:
 
 ```bash
 npx -y doctl-axi droplet list
@@ -41,8 +41,8 @@ Bare `npx -y doctl-axi` (no args) prints the TOON dashboard - account, balance, 
 npx -y doctl-axi droplet list
 
 # global, if you prefer a bare binary
-npm i -g doctl-axi        # or pnpm add -g do-axi
-do-axi droplet list
+npm i -g doctl-axi        # or pnpm add -g doctl-axi
+doctl-axi droplet list
 ```
 
 ## Setup hooks - opt-in with performance penalty
@@ -52,13 +52,13 @@ By default **nothing runs at SessionStart** - clean sessions have zero overhead 
 If you want ambient inventory before the first turn, opt in explicitly:
 
 ```bash
-do-axi setup hooks          # writes ~/.claude/settings.json + ~/.codex/hooks.json+config.toml + ~/.config/opencode/plugins/axi-do-axi.js
-do-axi setup hooks --check  # TOON OK vs DRIFT
+doctl-axi setup hooks          # writes ~/.claude/settings.json + ~/.codex/hooks.json+config.toml + ~/.config/opencode/plugins/axi-doctl-axi.js
+doctl-axi setup hooks --check  # TOON OK vs DRIFT
 ```
 
-**Penalty:** every new Claude/Codex/OpenCode SessionStart spawns `do-axi` (bare dashboard → 8 parallel `doctl --output json` for `account, balance, and counts for droplets, apps, databases, Kubernetes clusters, registry, domains`). Typically `1–3s` depending on fleet size (10s timeout, degrades to `—` on failure). Skip it and the skill remains keyword-discoverable with no per-session cost.
+**Penalty:** every new Claude/Codex/OpenCode SessionStart spawns `doctl-axi` (bare dashboard → 8 parallel `doctl --output json` for `account, balance, and counts for droplets, apps, databases, Kubernetes clusters, registry, domains`). Typically `1–3s` depending on fleet size (10s timeout, degrades to `—` on failure). Skip it and the skill remains keyword-discoverable with no per-session cost.
 
-See `skills/do-axi/SKILL.md` for the agent-facing workflow (When to use → Workflow → Commands → Tips).
+See `skills/doctl-axi/SKILL.md` for the agent-facing workflow (When to use → Workflow → Commands → Tips).
 
 ## Development
 

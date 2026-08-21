@@ -16,7 +16,7 @@ const ALLOWED_GC_FIELDS: Record<string, true> = { id: true, registry: true, stat
 export const REGISTRY_HELP = encode({
   command: "registry",
   description: "Manage Container Registry",
-  usage: "do-axi registry <subcommand> [flags]",
+  usage: "doctl-axi registry <subcommand> [flags]",
   subcommands: {
     "repository list": "List repositories",
     "tag list": "List tags for a repository",
@@ -34,10 +34,10 @@ export const REGISTRY_HELP = encode({
     "--registry": "Registry name",
   },
   examples: [
-    "do-axi registry repository list",
-    "do-axi registry tag list <repository>",
-    "do-axi registry manifest list <repository>",
-    "do-axi registry garbage-collection list",
+    "doctl-axi registry repository list",
+    "doctl-axi registry tag list <repository>",
+    "doctl-axi registry manifest list <repository>",
+    "doctl-axi registry garbage-collection list",
   ],
 });
 
@@ -51,7 +51,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (arg === "--fields" || arg === "--context" || arg === "--registry") continue;
     if (arg.startsWith("--fields=") || arg.startsWith("--context=") || arg.startsWith("--registry=")) continue;
     throw new AxiError(`Unknown flag: ${arg}`, "VALIDATION_ERROR", [
-      `Run \`do-axi ${command} ${sub} --help\` for available flags`,
+      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
     ]);
   }
 }
@@ -69,7 +69,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
     const val = args[idx + 1];
     if (val === undefined || val.startsWith("-")) {
       throw new AxiError(`flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        `Run \`do-axi registry --help\` for available flags`,
+        `Run \`doctl-axi registry --help\` for available flags`,
       ]);
     }
     args.splice(idx, 2);
@@ -91,7 +91,7 @@ export async function registryCommand(args: string[], _context: unknown): Promis
     if (entity === "--help" || entity === "-h") return REGISTRY_HELP;
     throw new AxiError("Missing subcommand for registry", "VALIDATION_ERROR", [
       "Available: repository, tag, manifest, garbage-collection",
-      "Run `do-axi registry --help`",
+      "Run `doctl-axi registry --help`",
     ]);
   }
   if (entity === "--help" || entity === "-h") return REGISTRY_HELP;
@@ -104,7 +104,7 @@ export async function registryCommand(args: string[], _context: unknown): Promis
     // For repository list without action? But spec requires repository list
     throw new AxiError(`Missing action for registry ${entity}`, "VALIDATION_ERROR", [
       "Available: list, get, create, delete",
-      "Run `do-axi registry --help`",
+      "Run `doctl-axi registry --help`",
     ]);
   }
 
@@ -140,7 +140,7 @@ export async function registryCommand(args: string[], _context: unknown): Promis
     default:
       throw new AxiError(`Unknown subcommand: ${entity} ${action}`, "VALIDATION_ERROR", [
         "Available: repository list, tag list|get, manifest list, garbage-collection list|get|create|delete",
-        "Run `do-axi registry --help`",
+        "Run `doctl-axi registry --help`",
       ]);
   }
 }
@@ -154,8 +154,8 @@ async function registryRepositoryList(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   const registryFlag = takeFlagValue(args, "--registry");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry repository list --help`"]);
-  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry repository list --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry repository list --help`"]);
+  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry repository list --help`"]);
 
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
@@ -184,7 +184,7 @@ async function registryRepositoryList(rawArgs: string[]): Promise<string> {
   return encode({
     count: `${mapped.length} of ${mapped.length} total`,
     repositories: filtered,
-    help: ["registry tag list <repository> for tags", "do-axi registry repository list --full for complete fields"],
+    help: ["registry tag list <repository> for tags", "doctl-axi registry repository list --full for complete fields"],
   });
 }
 
@@ -197,7 +197,7 @@ async function registryTagList(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   const registryFlag = takeFlagValue(args, "--registry");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry tag list --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry tag list --help`"]);
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -224,7 +224,7 @@ async function registryTagList(rawArgs: string[]): Promise<string> {
   return encode({
     count: `${mapped.length} of ${mapped.length} total`,
     tags: filtered,
-    help: ["registry manifest list <repository> for manifests", "do-axi registry tag list --full for complete fields"],
+    help: ["registry manifest list <repository> for manifests", "doctl-axi registry tag list --full for complete fields"],
   });
 }
 
@@ -236,11 +236,11 @@ async function registryTagGet(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   const registryFlag = takeFlagValue(args, "--registry");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry tag get --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry tag get --help`"]);
   const repo = args[0];
   const tag = args[1];
-  if (!repo || !tag) throw new AxiError("Missing repository or tag for registry tag get", "VALIDATION_ERROR", ["Usage: do-axi registry tag get <repository> <tag>"]);
-  if (args.length > 2) throw new AxiError(`Unexpected argument: ${args[2]}`, "VALIDATION_ERROR", ["Run `do-axi registry tag get --help`"]);
+  if (!repo || !tag) throw new AxiError("Missing repository or tag for registry tag get", "VALIDATION_ERROR", ["Usage: doctl-axi registry tag get <repository> <tag>"]);
+  if (args.length > 2) throw new AxiError(`Unexpected argument: ${args[2]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry tag get --help`"]);
   const baseArgs = ["registry", "repository", "list-tags", repo];
   if (registryFlag) baseArgs.push("--registry", registryFlag);
   const raw = await doctlJson<unknown>(baseArgs, contextFlag);
@@ -257,7 +257,7 @@ async function registryTagGet(rawArgs: string[]): Promise<string> {
   }
   const target = found ?? rawArray[0] ?? { repository: repo, tag, manifest_digest: tag };
   const mapped = toRegistryTagToon(target as never, full);
-  return encode({ tag: mapped as unknown as Record<string, unknown>, help: ["do-axi registry tag list <repository> for overview"] });
+  return encode({ tag: mapped as unknown as Record<string, unknown>, help: ["doctl-axi registry tag list <repository> for overview"] });
 }
 
 async function registryManifestList(rawArgs: string[]): Promise<string> {
@@ -269,7 +269,7 @@ async function registryManifestList(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   const registryFlag = takeFlagValue(args, "--registry");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry manifest list --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry manifest list --help`"]);
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -295,7 +295,7 @@ async function registryManifestList(rawArgs: string[]): Promise<string> {
   return encode({
     count: `${mapped.length} of ${mapped.length} total`,
     manifests: filtered,
-    help: ["registry tag list <repository> for tags", "do-axi registry manifest list --full for complete fields"],
+    help: ["registry tag list <repository> for tags", "doctl-axi registry manifest list --full for complete fields"],
   });
 }
 
@@ -307,7 +307,7 @@ async function registryGCList(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry garbage-collection list --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection list --help`"]);
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -332,7 +332,7 @@ async function registryGCList(rawArgs: string[]): Promise<string> {
   return encode({
     count: `${mapped.length} of ${mapped.length} total`,
     garbageCollections: filtered,
-    help: ["registry garbage-collection get <id> for detail", "do-axi registry garbage-collection list --full for complete fields"],
+    help: ["registry garbage-collection get <id> for detail", "doctl-axi registry garbage-collection list --full for complete fields"],
   });
 }
 
@@ -343,9 +343,9 @@ async function registryGCGet(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry garbage-collection get --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection get --help`"]);
   const idOrRegistry = args[0];
-  if (!idOrRegistry) throw new AxiError("Missing id for registry garbage-collection get", "VALIDATION_ERROR", ["Usage: do-axi registry garbage-collection get <id>"]);
+  if (!idOrRegistry) throw new AxiError("Missing id for registry garbage-collection get", "VALIDATION_ERROR", ["Usage: doctl-axi registry garbage-collection get <id>"]);
   // Try fetching list and find by id, fallback to get-active
   const baseArgsList = ["registry", "garbage-collection", "list"];
   // For simplicity, if arg looks like registry name, try get-active
@@ -358,7 +358,7 @@ async function registryGCGet(rawArgs: string[]): Promise<string> {
         const id = r.uuid ?? r.id;
         if (String(id) === idOrRegistry) {
           const mapped = toRegistryGCToon(it as never, full);
-          return encode({ garbageCollection: mapped as unknown as Record<string, unknown>, help: ["do-axi registry garbage-collection list for overview"] });
+          return encode({ garbageCollection: mapped as unknown as Record<string, unknown>, help: ["doctl-axi registry garbage-collection list for overview"] });
         }
       }
     }
@@ -367,7 +367,7 @@ async function registryGCGet(rawArgs: string[]): Promise<string> {
   const raw = await doctlJson<unknown>(["registry", "garbage-collection", "get-active", idOrRegistry], contextFlag);
   const obj = raw !== null && typeof raw === "object" && !Array.isArray(raw) ? raw : { uuid: idOrRegistry };
   const mapped = toRegistryGCToon(obj as never, full);
-  return encode({ garbageCollection: mapped as unknown as Record<string, unknown>, help: ["do-axi registry garbage-collection list for overview"] });
+  return encode({ garbageCollection: mapped as unknown as Record<string, unknown>, help: ["doctl-axi registry garbage-collection list for overview"] });
 }
 
 async function registryGCCreate(rawArgs: string[]): Promise<string> {
@@ -377,7 +377,7 @@ async function registryGCCreate(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry garbage-collection create --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection create --help`"]);
   const registryName = args[0];
   // start gc
   const baseArgs = ["registry", "garbage-collection", "start"];
@@ -385,7 +385,7 @@ async function registryGCCreate(rawArgs: string[]): Promise<string> {
   const raw = await doctlJson<unknown>(baseArgs, contextFlag);
   const obj = raw !== null && typeof raw === "object" && !Array.isArray(raw) ? raw : Array.isArray(raw) ? (raw[0] as unknown) : { uuid: "new-gc", registry_name: registryName ?? "" };
   const mapped = toRegistryGCToon((obj ?? {}) as never, full);
-  return encode({ garbageCollection: mapped as unknown as Record<string, unknown>, help: ["do-axi registry garbage-collection list for overview"] });
+  return encode({ garbageCollection: mapped as unknown as Record<string, unknown>, help: ["doctl-axi registry garbage-collection list for overview"] });
 }
 
 async function registryGCDelete(rawArgs: string[]): Promise<string> {
@@ -394,10 +394,10 @@ async function registryGCDelete(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi registry garbage-collection delete --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection delete --help`"]);
   const id = args[0];
-  if (!id) throw new AxiError("Missing id for registry garbage-collection delete", "VALIDATION_ERROR", ["Usage: do-axi registry garbage-collection delete <id>"]);
-  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `do-axi registry garbage-collection delete --help`"]);
+  if (!id) throw new AxiError("Missing id for registry garbage-collection delete", "VALIDATION_ERROR", ["Usage: doctl-axi registry garbage-collection delete <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection delete --help`"]);
   await doctlJson<unknown>(["registry", "garbage-collection", "cancel", id], contextFlag);
-  return encode({ deleted: id, help: ["do-axi registry garbage-collection list for overview"] });
+  return encode({ deleted: id, help: ["doctl-axi registry garbage-collection list for overview"] });
 }

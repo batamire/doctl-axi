@@ -21,7 +21,7 @@ Read-only dependency source repositories are available under
 
 - `.slim/clonedeps/repos/kunchenguid__axi/` — `axi` at `main`; framework repo
   with `axi-sdk-js` (runAxiCli, AxiError, built-in self-update, setup hooks)
-  that do-axi's design follows.
+  that doctl-axi's design follows.
 - `.slim/clonedeps/repos/kunchenguid__gh-axi/` — `gh-axi` at `main`; reference
   AXI example showing shared args/toon/fields/errors modules and idempotent
   mutations.

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { decode } from "@toon-format/toon";
 
-const BIN = "./dist/bin/do-axi.js";
+const BIN = "./dist/bin/doctl-axi.js";
 
 function runCli(args: string[], opts: { env?: Record<string, string | undefined>; fakeDir?: string; homeDir?: string } = {}) {
   const env: Record<string, string> = { ...process.env } as Record<string, string>;
@@ -95,15 +95,15 @@ describe("dashboard + hooks + packaging", () => {
   let homeTmp: string;
 
   beforeEach(() => {
-    tmp = mkdtempSync(join(tmpdir(), "do-axi-dash-"));
-    homeTmp = mkdtempSync(join(tmpdir(), "do-axi-home-"));
+    tmp = mkdtempSync(join(tmpdir(), "doctl-axi-dash-"));
+    homeTmp = mkdtempSync(join(tmpdir(), "doctl-axi-home-"));
   });
   afterEach(() => {
     rmSync(tmp, { recursive: true, force: true });
     rmSync(homeTmp, { recursive: true, force: true });
   });
 
-  it("bare do-axi prints TOON dashboard account/balance + 6 aggregates + help, exit 0", () => {
+  it("bare doctl-axi prints TOON dashboard account/balance + 6 aggregates + help, exit 0", () => {
     makeDashboardFakeDoctl(tmp);
     const res = runCli([], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "fake" } });
     expect(res.status).toBe(0);
@@ -128,7 +128,7 @@ describe("dashboard + hooks + packaging", () => {
     expect((data.kubernetes as Record<string, unknown>).count).toBe(1);
     expect((data.registry as Record<string, unknown>).count).toBe(1);
     expect((data.domain as Record<string, unknown>).count).toBe(1);
-    expect(data.help).toEqual(["do-axi droplet list"]);
+    expect(data.help).toEqual(["doctl-axi droplet list"]);
   });
 
   it("partial failure degrades to — not crash", () => {
@@ -140,7 +140,7 @@ describe("dashboard + hooks + packaging", () => {
     expect((data.droplet as Record<string, unknown>).count).toBe("—");
     // others still succeed
     expect((data.app as Record<string, unknown>).count).toBe(1);
-    expect(data.help).toEqual(["do-axi droplet list"]);
+    expect(data.help).toEqual(["doctl-axi droplet list"]);
   });
 
   it("all fetches fail still returns dashboard with — placeholders and help", () => {
@@ -152,7 +152,7 @@ describe("dashboard + hooks + packaging", () => {
     const data = decode(res.stdout.trim()) as Record<string, unknown>;
     expect((data.droplet as Record<string, unknown>).count).toBe("—");
     expect((data.database as Record<string, unknown>).count).toBe("—");
-    expect(data.help).toEqual(["do-axi droplet list"]);
+    expect(data.help).toEqual(["doctl-axi droplet list"]);
     const acc = data.account as Record<string, unknown>;
     expect(acc.email).toBe("—");
     expect(data.balance).toBe("—");
@@ -166,7 +166,7 @@ describe("dashboard + hooks + packaging", () => {
     expect(out1.code).toBe("OK");
     expect(existsSync(join(homeTmp, ".claude", "settings.json"))).toBe(true);
     expect(existsSync(join(homeTmp, ".codex", "hooks.json"))).toBe(true);
-    const opencodePlugin = join(homeTmp, ".config", "opencode", "plugins", "axi-do-axi.js");
+    const opencodePlugin = join(homeTmp, ".config", "opencode", "plugins", "axi-doctl-axi.js");
     expect(existsSync(opencodePlugin)).toBe(true);
     const claudeBefore = readFileSync(join(homeTmp, ".claude", "settings.json"), "utf-8");
     const codexBefore = readFileSync(join(homeTmp, ".codex", "hooks.json"), "utf-8");
@@ -208,22 +208,22 @@ describe("dashboard + hooks + packaging", () => {
   it("package.json fields correct", () => {
     const pkg = JSON.parse(readFileSync("package.json", "utf-8")) as Record<string, unknown>;
     expect(pkg.name).toBe("doctl-axi");
-    expect((pkg.bin as Record<string, string>)["do-axi"]).toBe("dist/bin/do-axi.js");
+    expect((pkg.bin as Record<string, string>)["doctl-axi"]).toBe("dist/bin/doctl-axi.js");
     expect((pkg.engines as Record<string, string>).node).toMatch(/>=20/);
     expect(pkg.packageManager).toMatch(/^pnpm@/);
     expect((pkg.dependencies as Record<string, string>)["@toon-format/toon"]).toBeDefined();
     expect((pkg.dependencies as Record<string, string>)["axi-sdk-js"]).toBeDefined();
     const files = pkg.files as string[];
     expect(files).toContain("dist");
-    expect(files).toContain("skills/do-axi");
+    expect(files).toContain("skills/doctl-axi");
     expect(files).toContain("LICENSE");
     expect(files).toContain("README.md");
   });
 
   it("skills and packaging files exist", () => {
-    expect(existsSync("skills/do-axi/SKILL.md")).toBe(true);
-    const skill = readFileSync("skills/do-axi/SKILL.md", "utf-8");
-    expect(skill).toContain("name: do-axi");
+    expect(existsSync("skills/doctl-axi/SKILL.md")).toBe(true);
+    const skill = readFileSync("skills/doctl-axi/SKILL.md", "utf-8");
+    expect(skill).toContain("name: doctl-axi");
     expect(skill).toContain("user-invocable: false");
     expect(skill).toContain("category: devops");
     expect(existsSync("scripts/build-skill.ts")).toBe(true);

@@ -27,7 +27,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (arg.startsWith("--fields=") || arg.startsWith("--context=")) continue;
     // unknown
     throw new AxiError(`Unknown flag: ${arg}`, "VALIDATION_ERROR", [
-      `Run \`do-axi ${command} ${sub} --help\` for available flags`,
+      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
     ]);
   }
 }
@@ -45,7 +45,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
     const val = args[idx + 1];
     if (val === undefined || val.startsWith("-")) {
       throw new AxiError(`flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        "Run `do-axi droplet list --help` for available flags",
+        "Run `doctl-axi droplet list --help` for available flags",
       ]);
     }
     args.splice(idx, 2);
@@ -64,7 +64,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
 export const DROPLET_HELP = encode({
   command: "droplet",
   description: "Manage Droplets (virtual machines)",
-  usage: "do-axi droplet <subcommand> [flags]",
+  usage: "doctl-axi droplet <subcommand> [flags]",
   subcommands: {
     list: "List Droplets",
   },
@@ -74,10 +74,10 @@ export const DROPLET_HELP = encode({
     "--context": "doctl context name",
   },
   examples: [
-    "do-axi droplet list",
-    "do-axi droplet list --full",
-    "do-axi droplet list --fields id,name",
-    "do-axi droplet list --context my-team",
+    "doctl-axi droplet list",
+    "doctl-axi droplet list --full",
+    "doctl-axi droplet list --fields id,name",
+    "doctl-axi droplet list --context my-team",
   ],
 });
 
@@ -86,7 +86,7 @@ export async function dropletCommand(args: string[], _context: unknown): Promise
   if (!sub || sub.startsWith("-")) {
     throw new AxiError("Missing subcommand for droplet", "VALIDATION_ERROR", [
       "Available: list",
-      "Run `do-axi droplet --help`",
+      "Run `doctl-axi droplet --help`",
     ]);
   }
   if (sub === "list") {
@@ -94,7 +94,7 @@ export async function dropletCommand(args: string[], _context: unknown): Promise
   }
   throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
     "Available: list",
-    "Run `do-axi droplet --help`",
+    "Run `doctl-axi droplet --help`",
   ]);
 }
 
@@ -113,12 +113,12 @@ async function dropletList(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi droplet list --help` for available flags",
+      "Run `doctl-axi droplet list --help` for available flags",
     ]);
   }
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi droplet list --help`",
+      "Run `doctl-axi droplet list --help`",
     ]);
   }
 
@@ -178,7 +178,7 @@ async function dropletList(rawArgs: string[]): Promise<string> {
     count: `${mapped.length} of ${totalCount} total`,
     status: `active ${active}/${mapped.length}`,
     droplets: filteredForEncode,
-    help: [`droplet get ${mapped[0].id} for detail`, "do-axi droplet list --full for complete fields"],
+    help: [`droplet get ${mapped[0].id} for detail`, "doctl-axi droplet list --full for complete fields"],
   };
 
   return encode(payload);

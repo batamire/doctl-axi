@@ -1,4 +1,4 @@
-# do-axi
+# doctl-axi
 
 Agent-ergonomic CLI for DigitalOcean — one AXI replacing 21 fragmented MCP services, wrapping `doctl --output json` → TOON.
 

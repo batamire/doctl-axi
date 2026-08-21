@@ -125,7 +125,7 @@ export async function buildDashboardPayload(): Promise<Record<string, unknown>> 
     kubernetes: { count: k8sCount },
     registry: { count: registryCount },
     domain: { count: domainCount },
-    help: ["do-axi droplet list"],
+    help: ["doctl-axi droplet list"],
   };
 
   return payload;

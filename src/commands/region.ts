@@ -8,14 +8,14 @@ const ALLOWED_FIELDS: Record<string, true> = { slug: true, name: true, available
 export const REGION_HELP = encode({
   command: "region",
   description: "List available DigitalOcean regions",
-  usage: "do-axi region <subcommand> [flags]",
+  usage: "doctl-axi region <subcommand> [flags]",
   subcommands: { list: "List regions" },
   flags: {
     "--full": "Disable truncation",
     "--fields": "Comma-separated fields to display (slug,name,available)",
     "--context": "doctl context name",
   },
-  examples: ["do-axi region list", "do-axi region list --fields slug,name"],
+  examples: ["doctl-axi region list", "doctl-axi region list --fields slug,name"],
 });
 
 function rejectUnknownFlags(args: string[], command: string, sub: string): void {
@@ -24,7 +24,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (a === "--full" || a === "--help" || a === "-h") continue;
     if (a === "--fields" || a === "--context") continue;
     if (a.startsWith("--fields=") || a.startsWith("--context=")) continue;
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`do-axi ${command} ${sub} --help\` for available flags`]);
+    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`doctl-axi ${command} ${sub} --help\` for available flags`]);
   }
 }
 function takeBoolFlag(args: string[], flag: string): boolean {
@@ -55,11 +55,11 @@ export async function regionCommand(args: string[], _context: unknown): Promise<
   const sub = args[0];
   if (!sub || sub.startsWith("-")) {
     if (sub === "--help" || sub === "-h") return REGION_HELP;
-    throw new AxiError("Missing subcommand for region", "VALIDATION_ERROR", ["Available: list", "Run `do-axi region --help`"]);
+    throw new AxiError("Missing subcommand for region", "VALIDATION_ERROR", ["Available: list", "Run `doctl-axi region --help`"]);
   }
   if (sub === "--help" || sub === "-h") return REGION_HELP;
   if (sub === "list") return regionList(args.slice(1));
-  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list", "Run `do-axi region --help`"]);
+  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list", "Run `doctl-axi region --help`"]);
 }
 
 async function regionList(rawArgs: string[]): Promise<string> {
@@ -70,8 +70,8 @@ async function regionList(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
   const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `do-axi region list --help`"]);
-  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `do-axi region list --help`"]);
+  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi region list --help`"]);
+  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi region list --help`"]);
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -98,7 +98,7 @@ async function regionList(rawArgs: string[]): Promise<string> {
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     regions: filtered,
-    help: ["do-axi region list --full for complete fields"],
+    help: ["doctl-axi region list --full for complete fields"],
   };
   return encode(payload);
 }

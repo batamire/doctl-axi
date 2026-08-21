@@ -5,7 +5,7 @@ import { docsCommand } from "../src/commands/docs.js";
 import { searchDocs, getDoc, clearDocsCache, docsCache, DOCS_BASE, LLMS_TXT_URL } from "../src/lib/docs.js";
 import { TRUNCATION_LIMIT } from "../src/lib/toon.js";
 
-const BIN = "./dist/bin/do-axi.js";
+const BIN = "./dist/bin/doctl-axi.js";
 
 function mockFetchResponse(text: string, ok = true, status = 200, statusText = "OK") {
   return {
@@ -27,7 +27,7 @@ const LLMS_TXT = [
 const MARKDOWN_SHORT = "# Resize\nThis is how to resize a droplet.\n";
 const MARKDOWN_LONG = "a".repeat(9000);
 
-describe("do-axi docs lib and command (fetch shim, 30m cache)", () => {
+describe("doctl-axi docs lib and command (fetch shim, 30m cache)", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   const originalFetch = globalThis.fetch;
 

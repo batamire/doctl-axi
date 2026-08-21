@@ -8,14 +8,14 @@ const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, region: tru
 export const DEDICATED_INFERENCE_HELP = encode({
   command: "dedicated-inference",
   description: "Manage dedicated inference resources",
-  usage: "do-axi dedicated-inference <subcommand> [flags]",
+  usage: "doctl-axi dedicated-inference <subcommand> [flags]",
   subcommands: { list: "List dedicated inference deployments" },
   flags: {
     "--full": "Disable truncation",
     "--fields": "Comma-separated fields to display (id,name,region,status)",
     "--context": "doctl context name",
   },
-  examples: ["do-axi dedicated-inference list", "do-axi dedicated-inference list --fields id,name"],
+  examples: ["doctl-axi dedicated-inference list", "doctl-axi dedicated-inference list --fields id,name"],
 });
 
 function rejectUnknownFlags(args: string[], command: string, sub: string): void {
@@ -24,7 +24,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (a === "--full" || a === "--help" || a === "-h") continue;
     if (a === "--fields" || a === "--context") continue;
     if (a.startsWith("--fields=") || a.startsWith("--context=")) continue;
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`do-axi ${command} ${sub} --help\` for available flags`]);
+    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`doctl-axi ${command} ${sub} --help\` for available flags`]);
   }
 }
 function takeBoolFlag(args: string[], flag: string): boolean {
@@ -57,12 +57,12 @@ export async function dedicatedInferenceCommand(args: string[], _context: unknow
     if (sub === "--help" || sub === "-h") return DEDICATED_INFERENCE_HELP;
     throw new AxiError("Missing subcommand for dedicated-inference", "VALIDATION_ERROR", [
       "Available: list",
-      "Run `do-axi dedicated-inference --help`",
+      "Run `doctl-axi dedicated-inference --help`",
     ]);
   }
   if (sub === "--help" || sub === "-h") return DEDICATED_INFERENCE_HELP;
   if (sub === "list") return list(args.slice(1));
-  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list", "Run `do-axi dedicated-inference --help`"]);
+  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list", "Run `doctl-axi dedicated-inference --help`"]);
 }
 
 async function list(rawArgs: string[]): Promise<string> {
@@ -73,8 +73,8 @@ async function list(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
   const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `do-axi dedicated-inference list --help`"]);
-  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `do-axi dedicated-inference list --help`"]);
+  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi dedicated-inference list --help`"]);
+  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi dedicated-inference list --help`"]);
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -104,7 +104,7 @@ async function list(rawArgs: string[]): Promise<string> {
     count: `${mapped.length} of ${rawArray.length} total`,
     status: `active ${mapped.filter((d) => d.status === "active").length}/${mapped.length}`,
     inference: filtered,
-    help: ["do-axi dedicated-inference list --full for complete fields"],
+    help: ["doctl-axi dedicated-inference list --full for complete fields"],
   };
   return encode(payload);
 }

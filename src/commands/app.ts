@@ -9,7 +9,7 @@ const ALLOWED_FIELDS_DEPLOY = new Set(["id", "phase", "cause", "progress"]);
 export const APP_HELP = encode({
   command: "app",
   description: "Manage App Platform applications",
-  usage: "do-axi app <subcommand> [flags]",
+  usage: "doctl-axi app <subcommand> [flags]",
   subcommands: {
     list: "List apps",
     get: "Get an app by id",
@@ -27,11 +27,11 @@ export const APP_HELP = encode({
     "--context": "doctl context name",
   },
   examples: [
-    "do-axi app list",
-    "do-axi app list --fields id,name",
-    "do-axi app list --full",
-    "do-axi app get <id>",
-    "do-axi app logs <id>",
+    "doctl-axi app list",
+    "doctl-axi app list --fields id,name",
+    "doctl-axi app list --full",
+    "doctl-axi app get <id>",
+    "doctl-axi app logs <id>",
   ],
 });
 
@@ -48,7 +48,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (arg.startsWith("--fields=") || arg.startsWith("--context=")) continue;
     if (arg === "--spec" || arg.startsWith("--spec=")) continue;
     throw new AxiError(`Unknown flag: ${arg}`, "VALIDATION_ERROR", [
-      `Run \`do-axi ${command} ${sub} --help\` for available flags`,
+      `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
     ]);
   }
 }
@@ -66,7 +66,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
     const val = args[idx + 1];
     if (val === undefined || val.startsWith("-")) {
       throw new AxiError(`flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        `Run \`do-axi app --help\` for available flags`,
+        `Run \`doctl-axi app --help\` for available flags`,
       ]);
     }
     args.splice(idx, 2);
@@ -88,7 +88,7 @@ export async function appCommand(args: string[], _context: unknown): Promise<str
     if (sub === "--help" || sub === "-h") return APP_HELP;
     throw new AxiError("Missing subcommand for app", "VALIDATION_ERROR", [
       "Available: list, get, create, update, delete, list-deployments, get-deployment, create-deployment, logs",
-      "Run `do-axi app --help`",
+      "Run `doctl-axi app --help`",
     ]);
   }
   if (sub === "--help" || sub === "-h") return APP_HELP;
@@ -114,7 +114,7 @@ export async function appCommand(args: string[], _context: unknown): Promise<str
     default:
       throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
         "Available: list, get, create, update, delete, list-deployments, get-deployment, create-deployment, logs",
-        "Run `do-axi app --help`",
+        "Run `doctl-axi app --help`",
       ]);
   }
 }
@@ -132,12 +132,12 @@ async function appList(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi app list --help` for available flags",
+      "Run `doctl-axi app list --help` for available flags",
     ]);
   }
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
-      "Run `do-axi app list --help`",
+      "Run `doctl-axi app list --help`",
     ]);
   }
 
@@ -176,7 +176,7 @@ async function appList(rawArgs: string[]): Promise<string> {
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${totalCount} total`,
     apps: filtered,
-    help: [`app get ${mapped[0].id} for detail`, "do-axi app list --full for complete fields"],
+    help: [`app get ${mapped[0].id} for detail`, "doctl-axi app list --full for complete fields"],
   };
   return encode(payload);
 }
@@ -196,10 +196,10 @@ async function appGet(rawArgs: string[]): Promise<string> {
   }
   rejectUnknownFlags(args, "app", "get");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi app get --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get --help`"]);
   const id = args[0];
-  if (!id) throw new AxiError("Missing id for app get", "VALIDATION_ERROR", ["Usage: do-axi app get <id>"]);
-  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `do-axi app get --help`"]);
+  if (!id) throw new AxiError("Missing id for app get", "VALIDATION_ERROR", ["Usage: doctl-axi app get <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get --help`"]);
   const raw = await doctlJson<unknown>(["apps", "get", id], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "app" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).app : raw;
   const mapped = toAppToon(obj as never, full);
@@ -211,7 +211,7 @@ async function appGet(rawArgs: string[]): Promise<string> {
     for (const f of fields) filtered[f] = (mapped as Record<string, unknown>)[f];
     out = filtered;
   }
-  return encode({ app: out, help: ["do-axi app list for overview", "do-axi app logs <id> for logs"] });
+  return encode({ app: out, help: ["doctl-axi app list for overview", "doctl-axi app logs <id> for logs"] });
 }
 
 async function appCreate(rawArgs: string[]): Promise<string> {
@@ -223,7 +223,7 @@ async function appCreate(rawArgs: string[]): Promise<string> {
   // also allow --spec=...
   rejectUnknownFlags(args, "app", "create");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi app create --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app create --help`"]);
   // create may have no positional id; ignore leftover args? but if args remains treat as spec path? ignore
   // For test we just forward
   const raw = await doctlJson<unknown>(["apps", "create"], contextFlag);
@@ -242,9 +242,9 @@ async function appUpdate(rawArgs: string[]): Promise<string> {
   takeFlagValue(args, "--spec");
   rejectUnknownFlags(args, "app", "update");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi app update --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app update --help`"]);
   const id = args[0];
-  if (!id) throw new AxiError("Missing id for app update", "VALIDATION_ERROR", ["Usage: do-axi app update <id>"]);
+  if (!id) throw new AxiError("Missing id for app update", "VALIDATION_ERROR", ["Usage: doctl-axi app update <id>"]);
   const raw = await doctlJson<unknown>(["apps", "update", id], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "app" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).app : raw;
   const mapped = toAppToon((obj ?? {}) as never, full);
@@ -257,12 +257,12 @@ async function appDelete(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   rejectUnknownFlags(args, "app", "delete");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi app delete --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app delete --help`"]);
   const id = args[0];
-  if (!id) throw new AxiError("Missing id for app delete", "VALIDATION_ERROR", ["Usage: do-axi app delete <id>"]);
-  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `do-axi app delete --help`"]);
+  if (!id) throw new AxiError("Missing id for app delete", "VALIDATION_ERROR", ["Usage: doctl-axi app delete <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app delete --help`"]);
   await doctlJson<unknown>(["apps", "delete", id], contextFlag);
-  return encode({ deleted: id, help: ["do-axi app list for overview"] });
+  return encode({ deleted: id, help: ["doctl-axi app list for overview"] });
 }
 
 async function appListDeployments(rawArgs: string[]): Promise<string> {
@@ -279,10 +279,10 @@ async function appListDeployments(rawArgs: string[]): Promise<string> {
     fields = req;
   }
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi app list-deployments --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app list-deployments --help`"]);
   const id = args[0];
-  if (!id) throw new AxiError("Missing id for app list-deployments", "VALIDATION_ERROR", ["Usage: do-axi app list-deployments <id>"]);
-  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `do-axi app list-deployments --help`"]);
+  if (!id) throw new AxiError("Missing id for app list-deployments", "VALIDATION_ERROR", ["Usage: doctl-axi app list-deployments <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app list-deployments --help`"]);
   const raw = await doctlJson<unknown>(["apps", "list-deployments", id], contextFlag);
   const rawArray: unknown[] = Array.isArray(raw) ? raw : raw !== null && typeof raw === "object" && "deployments" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).deployments) ? ((raw as Record<string, unknown>).deployments as unknown[]) : [];
   if (rawArray.length === 0) return "0 deployments";
@@ -305,11 +305,11 @@ async function appGetDeployment(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   rejectUnknownFlags(args, "app", "get-deployment");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi app get-deployment --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get-deployment --help`"]);
   const appId = args[0];
   const depId = args[1];
-  if (!appId || !depId) throw new AxiError("Missing id for app get-deployment", "VALIDATION_ERROR", ["Usage: do-axi app get-deployment <app-id> <deployment-id>"]);
-  if (args.length > 2) throw new AxiError(`Unexpected argument: ${args[2]}`, "VALIDATION_ERROR", ["Run `do-axi app get-deployment --help`"]);
+  if (!appId || !depId) throw new AxiError("Missing id for app get-deployment", "VALIDATION_ERROR", ["Usage: doctl-axi app get-deployment <app-id> <deployment-id>"]);
+  if (args.length > 2) throw new AxiError(`Unexpected argument: ${args[2]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get-deployment --help`"]);
   const raw = await doctlJson<unknown>(["apps", "get-deployment", appId, depId], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "deployment" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).deployment : raw;
   const mapped = toAppDeploymentToon((obj ?? {}) as never, full);
@@ -323,10 +323,10 @@ async function appCreateDeployment(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   rejectUnknownFlags(args, "app", "create-deployment");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `do-axi app create-deployment --help`"]);
+  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app create-deployment --help`"]);
   const id = args[0];
-  if (!id) throw new AxiError("Missing id for app create-deployment", "VALIDATION_ERROR", ["Usage: do-axi app create-deployment <id>"]);
-  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `do-axi app create-deployment --help`"]);
+  if (!id) throw new AxiError("Missing id for app create-deployment", "VALIDATION_ERROR", ["Usage: doctl-axi app create-deployment <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app create-deployment --help`"]);
   const raw = await doctlJson<unknown>(["apps", "create-deployment", id], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "deployment" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).deployment : raw;
   const mapped = toAppDeploymentToon((obj ?? {}) as never, full);
@@ -358,7 +358,7 @@ async function appLogs(rawArgs: string[]): Promise<string> {
       // so throw if not allowed
       // but if it's --type without =, we already continued if exactly --type, so skip
       // Check if a is --bogus
-      throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `do-axi app logs --help` for available flags"]);
+      throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `doctl-axi app logs --help` for available flags"]);
     }
   }
   const leftover = args.filter((a) => a.startsWith("-") && !allowedLogFlags.has(a) && a !== "--full" && a !== "--fields" && a !== "--context" && !a.startsWith("--type") && !a.startsWith("--tail") && !a.startsWith("--deployment"));
@@ -392,7 +392,7 @@ async function appLogs(rawArgs: string[]): Promise<string> {
   const positional = args.filter((a) => !a.startsWith("-"));
   const appId = positional[0];
   const component = positional[1];
-  if (!appId) throw new AxiError("Missing id for app logs", "VALIDATION_ERROR", ["Usage: do-axi app logs <id> [component]"]);
+  if (!appId) throw new AxiError("Missing id for app logs", "VALIDATION_ERROR", ["Usage: doctl-axi app logs <id> [component]"]);
   // Take --type etc values already handled but we also need to remove them from args for doctl call? We'll just pass baseArgs with appId and component
   const baseArgs = ["apps", "logs", appId];
   if (component) baseArgs.push(component);

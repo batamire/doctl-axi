@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { decode } from "@toon-format/toon";
 
-const BIN = "./dist/bin/do-axi.js";
+const BIN = "./dist/bin/doctl-axi.js";
 
 function makeFakeDoctl(dir: string, content: string, captureFile?: string) {
   const script = join(dir, "doctl");
@@ -48,12 +48,12 @@ function runCli(
   return result;
 }
 
-describe("do-axi app CLI seam", () => {
+describe("doctl-axi app CLI seam", () => {
   let tmp: string;
   let capture: string;
 
   beforeEach(() => {
-    tmp = mkdtempSync(join(tmpdir(), "do-axi-app-test-"));
+    tmp = mkdtempSync(join(tmpdir(), "doctl-axi-app-test-"));
     capture = join(tmp, "args.log");
   });
   afterEach(() => rmSync(tmp, { recursive: true, force: true }));
@@ -237,11 +237,11 @@ describe("do-axi app CLI seam", () => {
   });
 });
 
-describe("do-axi registry CLI seam", () => {
+describe("doctl-axi registry CLI seam", () => {
   let tmp: string;
   let capture: string;
   beforeEach(() => {
-    tmp = mkdtempSync(join(tmpdir(), "do-axi-reg-test-"));
+    tmp = mkdtempSync(join(tmpdir(), "doctl-axi-reg-test-"));
     capture = join(tmp, "args.log");
   });
   afterEach(() => rmSync(tmp, { recursive: true, force: true }));

@@ -13,7 +13,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
       const key = a.split("=")[0]!;
       if (!KNOWN_FLAGS.has(key)) {
         throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [
-          `Run \`do-axi ${command} ${sub} --help\` for available flags`,
+          `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
         ]);
       }
       continue;
@@ -24,7 +24,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     }
     if (!KNOWN_FLAGS.has(a)) {
       throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [
-        `Run \`do-axi ${command} ${sub} --help\` for available flags`,
+        `Run \`doctl-axi ${command} ${sub} --help\` for available flags`,
       ]);
     }
     // if flag with value, skip next
@@ -47,7 +47,7 @@ function takeFlagValue(args: string[], flag: string): string | undefined {
     const val = args[idx + 1];
     if (val === undefined || val.startsWith("-")) {
       throw new AxiError(`Flag ${flag} requires a value`, "VALIDATION_ERROR", [
-        `Run \`do-axi docs --help\` for available flags`,
+        `Run \`doctl-axi docs --help\` for available flags`,
       ]);
     }
     args.splice(idx, 2);
@@ -96,14 +96,14 @@ function validateFields(fieldsArg: string | undefined, allowed: string[]): strin
 export const DOCS_HELP = encode({
   command: "docs",
   description: "Search and fetch DigitalOcean documentation (no token required)",
-  usage: "do-axi docs <subcommand> [args] [flags]",
+  usage: "doctl-axi docs <subcommand> [args] [flags]",
   subcommands: {
-    search: "Search docs via llms.txt — do-axi docs search <query>",
-    get: "Fetch a docs page — do-axi docs get <path>",
-    "find-for-service": "Find docs for a service — do-axi docs find-for-service <service>",
-    "get-quickstart": "Fetch quickstart guide — do-axi docs get-quickstart <path>",
-    troubleshoot: "Fetch troubleshooting guide — do-axi docs troubleshoot <path>",
-    "get-related": "Find related docs — do-axi docs get-related <path>",
+    search: "Search docs via llms.txt — doctl-axi docs search <query>",
+    get: "Fetch a docs page — doctl-axi docs get <path>",
+    "find-for-service": "Find docs for a service — doctl-axi docs find-for-service <service>",
+    "get-quickstart": "Fetch quickstart guide — doctl-axi docs get-quickstart <path>",
+    troubleshoot: "Fetch troubleshooting guide — doctl-axi docs troubleshoot <path>",
+    "get-related": "Find related docs — doctl-axi docs get-related <path>",
   },
   flags: {
     "--full": "Disable truncation (show complete field values)",
@@ -111,10 +111,10 @@ export const DOCS_HELP = encode({
     "--help": "Show help for a command",
   },
   examples: [
-    "do-axi docs search \"droplet resize\"",
-    "do-axi docs get /products/droplets/how-to/resize/",
-    "do-axi docs search droplets --full",
-    "do-axi docs find-for-service app-platform",
+    "doctl-axi docs search \"droplet resize\"",
+    "doctl-axi docs get /products/droplets/how-to/resize/",
+    "doctl-axi docs search droplets --full",
+    "doctl-axi docs find-for-service app-platform",
   ],
 });
 
@@ -130,69 +130,69 @@ const SUBCOMMANDS = new Set([
 const PER_SUB_HELP: Record<string, string> = {
   search: encode({
     command: "docs search",
-    usage: "do-axi docs search <query> [--full] [--fields path,title,excerpt]",
+    usage: "doctl-axi docs search <query> [--full] [--fields path,title,excerpt]",
     description: "Search DigitalOcean docs via llms.txt",
     flags: {
       "--full": "Disable truncation",
       "--fields": "Comma-separated fields to display",
       "--help": "Show help",
     },
-    examples: ['do-axi docs search "droplet resize"', "do-axi docs search droplets --full"],
+    examples: ['doctl-axi docs search "droplet resize"', "doctl-axi docs search droplets --full"],
   }),
   get: encode({
     command: "docs get",
-    usage: "do-axi docs get <path> [--full] [--fields path,excerpt]",
+    usage: "doctl-axi docs get <path> [--full] [--fields path,excerpt]",
     description: "Fetch a docs page as markdown excerpt",
     flags: {
       "--full": "Disable truncation",
       "--fields": "Comma-separated fields to display",
       "--help": "Show help",
     },
-    examples: ["do-axi docs get /products/droplets/how-to/resize/", "do-axi docs get /products/droplets/how-to/resize --full"],
+    examples: ["doctl-axi docs get /products/droplets/how-to/resize/", "doctl-axi docs get /products/droplets/how-to/resize --full"],
   }),
   "find-for-service": encode({
     command: "docs find-for-service",
-    usage: "do-axi docs find-for-service <service> [--full] [--fields path,title,excerpt]",
+    usage: "doctl-axi docs find-for-service <service> [--full] [--fields path,title,excerpt]",
     description: "Find docs for a DigitalOcean service",
     flags: {
       "--full": "Disable truncation",
       "--fields": "Comma-separated fields to display",
       "--help": "Show help",
     },
-    examples: ["do-axi docs find-for-service app-platform"],
+    examples: ["doctl-axi docs find-for-service app-platform"],
   }),
   "get-quickstart": encode({
     command: "docs get-quickstart",
-    usage: "do-axi docs get-quickstart <path> [--full] [--fields path,excerpt]",
+    usage: "doctl-axi docs get-quickstart <path> [--full] [--fields path,excerpt]",
     description: "Fetch quickstart guide for a docs path",
     flags: {
       "--full": "Disable truncation",
       "--fields": "Comma-separated fields to display",
       "--help": "Show help",
     },
-    examples: ["do-axi docs get-quickstart /products/droplets/"],
+    examples: ["doctl-axi docs get-quickstart /products/droplets/"],
   }),
   troubleshoot: encode({
     command: "docs troubleshoot",
-    usage: "do-axi docs troubleshoot <path> [--full] [--fields path,excerpt]",
+    usage: "doctl-axi docs troubleshoot <path> [--full] [--fields path,excerpt]",
     description: "Fetch troubleshooting guide for a docs path",
     flags: {
       "--full": "Disable truncation",
       "--fields": "Comma-separated fields to display",
       "--help": "Show help",
     },
-    examples: ["do-axi docs troubleshoot /products/droplets/how-to/resize/"],
+    examples: ["doctl-axi docs troubleshoot /products/droplets/how-to/resize/"],
   }),
   "get-related": encode({
     command: "docs get-related",
-    usage: "do-axi docs get-related <path> [--full] [--fields path,title,excerpt]",
+    usage: "doctl-axi docs get-related <path> [--full] [--fields path,title,excerpt]",
     description: "Find related docs for a path",
     flags: {
       "--full": "Disable truncation",
       "--fields": "Comma-separated fields to display",
       "--help": "Show help",
     },
-    examples: ["do-axi docs get-related /products/droplets/how-to/resize/"],
+    examples: ["doctl-axi docs get-related /products/droplets/how-to/resize/"],
   }),
 };
 
@@ -216,7 +216,7 @@ export async function docsCommand(args: string[], _context: unknown): Promise<st
     if (sub) {
       throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
         "Available: search, get, find-for-service, get-quickstart, troubleshoot, get-related",
-        "Run `do-axi docs --help` for usage",
+        "Run `doctl-axi docs --help` for usage",
       ]);
     }
     return DOCS_HELP;
@@ -233,7 +233,7 @@ export async function docsCommand(args: string[], _context: unknown): Promise<st
   const leftoverFlags = mutable.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      `Run \`do-axi docs ${sub} --help\` for available flags`,
+      `Run \`doctl-axi docs ${sub} --help\` for available flags`,
     ]);
   }
 
@@ -265,7 +265,7 @@ async function handleSearch(args: string[], full: boolean, fieldsArg: string | u
   const fields = validateFields(fieldsArg, allowed);
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <query>", "VALIDATION_ERROR", [
-      "Usage: do-axi docs search <query> [--full] [--fields path,title,excerpt]",
+      "Usage: doctl-axi docs search <query> [--full] [--fields path,title,excerpt]",
     ]);
   }
   if (args.length > 1) {
@@ -308,12 +308,12 @@ async function handleGet(args: string[], full: boolean, fieldsArg: string | unde
   const fields = validateFields(fieldsArg, allowed);
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
-      "Usage: do-axi docs get <path> [--full]",
+      "Usage: doctl-axi docs get <path> [--full]",
     ]);
   }
   const docPath = args[0]!.trim();
   if (args.length > 1) {
-    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `do-axi docs get --help`"]);
+    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi docs get --help`"]);
   }
   const { path, excerpt } = await getDoc(docPath, full);
   // truncate excerpt if needed
@@ -347,7 +347,7 @@ async function handleFindForService(args: string[], full: boolean, fieldsArg: st
   const fields = validateFields(fieldsArg, allowed);
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <service>", "VALIDATION_ERROR", [
-      "Usage: do-axi docs find-for-service <service>",
+      "Usage: doctl-axi docs find-for-service <service>",
     ]);
   }
   const service = args.join(" ").trim();
@@ -376,7 +376,7 @@ async function handleGetQuickstart(args: string[], full: boolean, fieldsArg: str
   // same as get, but help hints quickstart
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
-      "Usage: do-axi docs get-quickstart <path>",
+      "Usage: doctl-axi docs get-quickstart <path>",
     ]);
   }
   const docPath = args[0]!.trim();
@@ -409,7 +409,7 @@ async function handleGetQuickstart(args: string[], full: boolean, fieldsArg: str
 async function handleTroubleshoot(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
-      "Usage: do-axi docs troubleshoot <path>",
+      "Usage: doctl-axi docs troubleshoot <path>",
     ]);
   }
   const docPath = args[0]!.trim();
@@ -445,7 +445,7 @@ async function handleGetRelated(args: string[], full: boolean, fieldsArg: string
   const fields = validateFields(fieldsArg, allowed);
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
-      "Usage: do-axi docs get-related <path>",
+      "Usage: doctl-axi docs get-related <path>",
     ]);
   }
   const docPath = args.join(" ").trim();

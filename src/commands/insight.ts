@@ -8,7 +8,7 @@ const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, status: tru
 export const INSIGHT_HELP = encode({
   command: "insight",
   description: "Manage insight / uptime checks",
-  usage: "do-axi insight <subcommand> [flags]",
+  usage: "doctl-axi insight <subcommand> [flags]",
   subcommands: {
     "uptime list": "List uptime checks",
     "uptime get": "Get an uptime check by id",
@@ -18,7 +18,7 @@ export const INSIGHT_HELP = encode({
     "--fields": "Comma-separated fields to display (id,name,status,target)",
     "--context": "doctl context name",
   },
-  examples: ["do-axi insight uptime list", "do-axi insight uptime list --fields id,name"],
+  examples: ["doctl-axi insight uptime list", "doctl-axi insight uptime list --fields id,name"],
 });
 
 function rejectUnknownFlags(args: string[], command: string, sub: string): void {
@@ -27,7 +27,7 @@ function rejectUnknownFlags(args: string[], command: string, sub: string): void 
     if (a === "--full" || a === "--help" || a === "-h") continue;
     if (a === "--fields" || a === "--context") continue;
     if (a.startsWith("--fields=") || a.startsWith("--context=")) continue;
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`do-axi ${command} ${sub} --help\` for available flags`]);
+    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", [`Run \`doctl-axi ${command} ${sub} --help\` for available flags`]);
   }
 }
 function takeBoolFlag(args: string[], flag: string): boolean {
@@ -59,17 +59,17 @@ export async function insightCommand(args: string[], _context: unknown): Promise
   const sub2 = args[1];
   if (!sub || sub.startsWith("-")) {
     if (sub === "--help" || sub === "-h") return INSIGHT_HELP;
-    throw new AxiError("Missing subcommand for insight", "VALIDATION_ERROR", ["Available: uptime list", "Run `do-axi insight --help`"]);
+    throw new AxiError("Missing subcommand for insight", "VALIDATION_ERROR", ["Available: uptime list", "Run `doctl-axi insight --help`"]);
   }
   if (sub === "--help" || sub === "-h") return INSIGHT_HELP;
-  if (sub !== "uptime") throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: uptime", "Run `do-axi insight --help`"]);
+  if (sub !== "uptime") throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: uptime", "Run `doctl-axi insight --help`"]);
   if (!sub2 || sub2.startsWith("-")) {
     if (sub2 === "--help" || sub2 === "-h") return INSIGHT_HELP;
-    throw new AxiError("Missing subcommand for insight uptime", "VALIDATION_ERROR", ["Available: list, get", "Run `do-axi insight --help`"]);
+    throw new AxiError("Missing subcommand for insight uptime", "VALIDATION_ERROR", ["Available: list, get", "Run `doctl-axi insight --help`"]);
   }
   if (sub2 === "list") return uptimeList(args.slice(2));
   if (sub2 === "get") return uptimeGet(args.slice(2));
-  throw new AxiError(`Unknown subcommand: ${sub2}`, "VALIDATION_ERROR", ["Available: list, get", "Run `do-axi insight --help`"]);
+  throw new AxiError(`Unknown subcommand: ${sub2}`, "VALIDATION_ERROR", ["Available: list, get", "Run `doctl-axi insight --help`"]);
 }
 
 async function uptimeList(rawArgs: string[]): Promise<string> {
@@ -80,8 +80,8 @@ async function uptimeList(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
   const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `do-axi insight uptime list --help`"]);
-  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `do-axi insight uptime list --help`"]);
+  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime list --help`"]);
+  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime list --help`"]);
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -110,7 +110,7 @@ async function uptimeList(rawArgs: string[]): Promise<string> {
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     checks: filtered,
-    help: ["do-axi insight uptime list --full for complete fields"],
+    help: ["doctl-axi insight uptime list --full for complete fields"],
   };
   return encode(payload);
 }
@@ -122,11 +122,11 @@ async function uptimeGet(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   rejectUnknownFlags(args, "insight", "uptime get");
   const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `do-axi insight uptime get --help`"]);
+  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime get --help`"]);
   const id = args[0];
-  if (!id) throw new AxiError("Missing id for insight uptime get", "VALIDATION_ERROR", ["Usage: do-axi insight uptime get <id>"]);
+  if (!id) throw new AxiError("Missing id for insight uptime get", "VALIDATION_ERROR", ["Usage: doctl-axi insight uptime get <id>"]);
   const raw = await doctlJson<unknown>(["monitoring", "uptime", "get", id], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "check" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).check as unknown) : raw;
   const mapped = toInsightToon(obj as never, full);
-  return encode({ check: mapped as unknown as Record<string, unknown>, help: ["do-axi insight uptime list for overview"] });
+  return encode({ check: mapped as unknown as Record<string, unknown>, help: ["doctl-axi insight uptime list for overview"] });
 }

@@ -6,21 +6,21 @@ import { encode } from "@toon-format/toon";
 export const BALANCE_HELP = encode({
   command: "balance",
   description: "Get account balance",
-  usage: "do-axi balance <subcommand> [flags]",
+  usage: "doctl-axi balance <subcommand> [flags]",
   subcommands: { get: "Get balance" },
   flags: { "--context": "doctl context name", "--full": "Disable truncation" },
-  examples: ["do-axi balance get", "do-axi balance get --full"],
+  examples: ["doctl-axi balance get", "doctl-axi balance get --full"],
 });
 
 export async function balanceCommand(args: string[], _context: unknown): Promise<string> {
   const sub = args[0];
   if (!sub || sub.startsWith("-")) {
     if (sub === "--help" || sub === "-h") return BALANCE_HELP;
-    throw new AxiError("Missing subcommand for balance", "VALIDATION_ERROR", ["Available: get", "Run `do-axi balance --help`"]);
+    throw new AxiError("Missing subcommand for balance", "VALIDATION_ERROR", ["Available: get", "Run `doctl-axi balance --help`"]);
   }
   if (sub === "--help" || sub === "-h") return BALANCE_HELP;
   if (sub === "get") return balanceGet(args.slice(1));
-  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: get", "Run `do-axi balance --help`"]);
+  throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: get", "Run `doctl-axi balance --help`"]);
 }
 
 async function balanceGet(rawArgs: string[]): Promise<string> {
@@ -29,7 +29,7 @@ async function balanceGet(rawArgs: string[]): Promise<string> {
     if (!a.startsWith("-")) continue;
     if (a === "--context" || a === "--full" || a === "--help" || a === "-h") continue;
     if (a.startsWith("--context=")) continue;
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `do-axi balance get --help`"]);
+    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `doctl-axi balance get --help`"]);
   }
   const args = [...rawArgs];
   let contextFlag: string | undefined;
@@ -55,10 +55,10 @@ async function balanceGet(rawArgs: string[]): Promise<string> {
     return false;
   })();
   const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `do-axi balance get --help`"]);
-  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `do-axi balance get --help`"]);
+  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi balance get --help`"]);
+  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi balance get --help`"]);
   const raw = await doctlJson<unknown>(["balance", "get"], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "balance" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).balance as unknown) : raw;
   const mapped = toBalanceToon(obj as never, full);
-  return encode({ balance: mapped as unknown as Record<string, unknown>, help: ["do-axi account get for account"] });
+  return encode({ balance: mapped as unknown as Record<string, unknown>, help: ["doctl-axi account get for account"] });
 }

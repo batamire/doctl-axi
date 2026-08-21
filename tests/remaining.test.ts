@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { decode } from "@toon-format/toon";
 
-const BIN = "./dist/bin/do-axi.js";
+const BIN = "./dist/bin/doctl-axi.js";
 
 function makeFakeDoctl(dir: string, json: string, captureFile?: string) {
   const script = join(dir, "doctl");
@@ -52,7 +52,7 @@ describe("remaining nouns CLI seam", () => {
   let capture: string;
 
   beforeEach(() => {
-    tmp = mkdtempSync(join(tmpdir(), "do-axi-remaining-"));
+    tmp = mkdtempSync(join(tmpdir(), "doctl-axi-remaining-"));
     capture = join(tmp, "args.log");
   });
   afterEach(() => {

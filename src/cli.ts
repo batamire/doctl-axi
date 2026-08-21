@@ -21,7 +21,7 @@ import { setupCommand, SETUP_HELP } from "./commands/setup.js";
 import { buildDashboardPayload } from "./lib/dashboard.js";
 export const DESCRIPTION = "Agent-ergonomic CLI for DigitalOcean — one AXI wrapping doctl → TOON";
 export const TOP_HELP = encode({
-  usage: "do-axi <command> [args] [flags]",
+  usage: "doctl-axi <command> [args] [flags]",
   description: DESCRIPTION,
   commands: {
     droplet: "Manage Droplets (virtual machines)",
@@ -40,7 +40,7 @@ export const TOP_HELP = encode({
     insight: "Manage insight / uptime checks",
     marketplace: "List marketplace offerings",
     docs: "Search and fetch DigitalOcean documentation (no token required)",
-    setup: "Manage do-axi setup including ambient hooks",
+    setup: "Manage doctl-axi setup including ambient hooks",
   },
   flags: {
     "--full": "Disable truncation (show complete field values)",
@@ -50,17 +50,17 @@ export const TOP_HELP = encode({
     "--version": "Show version",
   },
   examples: [
-    "do-axi droplet list",
-    "do-axi droplet list --fields id,name",
-    "do-axi droplet list --full",
-    "do-axi kubernetes cluster list",
-    "do-axi database list",
-    "do-axi network domain list",
-    "do-axi volume list",
-    "do-axi space key list",
-    "do-axi dedicated-inference list",
-    "do-axi insight uptime list",
-    "do-axi marketplace list",
+    "doctl-axi droplet list",
+    "doctl-axi droplet list --fields id,name",
+    "doctl-axi droplet list --full",
+    "doctl-axi kubernetes cluster list",
+    "doctl-axi database list",
+    "doctl-axi network domain list",
+    "doctl-axi volume list",
+    "doctl-axi space key list",
+    "doctl-axi dedicated-inference list",
+    "doctl-axi insight uptime list",
+    "doctl-axi marketplace list",
   ],
 });
 

@@ -9,7 +9,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
-const BIN = "./dist/bin/do-axi.js";
+const BIN = "./dist/bin/doctl-axi.js";
 
 function makeFakeDoctl(dir: string, json: string, captureFile?: string) {
   const script = join(dir, "doctl");
@@ -54,12 +54,12 @@ function runCli(
   return result;
 }
 
-describe("do-axi droplet list CLI seam", () => {
+describe("doctl-axi droplet list CLI seam", () => {
   let tmp: string;
   let capture: string;
 
   beforeEach(() => {
-    tmp = mkdtempSync(join(tmpdir(), "do-axi-test-"));
+    tmp = mkdtempSync(join(tmpdir(), "doctl-axi-test-"));
     capture = join(tmp, "args.log");
   });
 
