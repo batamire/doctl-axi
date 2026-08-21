@@ -25,24 +25,45 @@ type ExecResult = {
   exitCode: number;
 };
 
-function toExecResult(error: unknown, stdout: string, stderr: string): ExecResult {
-  if (error && typeof error === "object" && "code" in error) {
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code === "ENOENT") {
-      return { stdout: "", stderr: "ENOENT", exitCode: 127 };
-    }
+export function toExecResult(error: unknown, stdout: string, stderr: string): ExecResult {
+  const e = (error && typeof error === "object" ? error : null) as
+    | { code?: unknown; errno?: unknown; status?: unknown }
+    | null;
+  const out = stdout ?? "";
+  const err = stderr ?? "";
+
+  // Numeric coercion that never yields NaN: non-numeric input resolves to null.
+  const asExitCode = (value: unknown): number | null => {
+    if (value === null || value === undefined) return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  // 1. The doctl binary itself is missing.
+  if (e?.code === "ENOENT") {
+    return { stdout: "", stderr: "ENOENT", exitCode: 127 };
   }
-  const exitCode =
-    error && typeof error === "object" && "code" in error
-      ? Number((error as { code?: number }).code ?? 1)
-      : error
-        ? 1
-        : 0;
-  // Node execFile error may have code property as number or string, fallback
-  const e = error as { code?: unknown; status?: unknown } | null;
-  const status = e?.status ?? e?.code;
-  const numeric = typeof status === "number" ? status : exitCode;
-  return { stdout: stdout ?? "", stderr: stderr ?? "", exitCode: numeric };
+  // 2. Exit status reported by the spawned process.
+  const status = asExitCode(e?.status);
+  if (status !== null) {
+    return { stdout: out, stderr: err, exitCode: status };
+  }
+  // 3. Numeric error code (e.g. killed by signal N).
+  const code = asExitCode(e?.code);
+  if (code !== null) {
+    return { stdout: out, stderr: err, exitCode: code };
+  }
+  // 4. Numeric errno.
+  const errno = asExitCode(e?.errno);
+  if (errno !== null) {
+    return { stdout: out, stderr: err, exitCode: errno };
+  }
+  // 5. Any other error (non-numeric code/errno such as "EACCES"): generic failure.
+  if (e) {
+    return { stdout: out, stderr: err, exitCode: 1 };
+  }
+  // 6. Success.
+  return { stdout: out, stderr: err, exitCode: 0 };
 }
 
 function execDoctl(args: string[]): Promise<ExecResult> {
