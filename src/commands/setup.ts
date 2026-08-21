@@ -48,15 +48,9 @@ function checkHooksDrift(marker = "doctl-axi"): { drift: boolean; details: Recor
         codexConfigOk = c.includes("hooks");
       }
     } else {
-      // if hooks are expected but config missing, consider drift if any hook missing?
-      // config is auto-created by installer, so missing when hooks expected is drift
-      if (claudeOk || codexOk || opencodeOk) {
-        // if any hook file exists, config should exist
-        // but if none exist, missing config is also drift when we expect install
-        codexConfigOk = false;
-      } else {
-        codexConfigOk = false;
-      }
+      // config is auto-created by installer; missing when hooks are expected
+      // is drift regardless of which hook files exist
+      codexConfigOk = false;
     }
   } catch {
     codexConfigOk = false;
@@ -72,6 +66,24 @@ function checkHooksDrift(marker = "doctl-axi"): { drift: boolean; details: Recor
     codexConfig: codexConfigOk ? "ok" : "missing",
   };
   return { drift, details };
+}
+
+/** Shared DRIFT/OK envelope for the --check and post-install paths. */
+function hookStatusPayload(drift: boolean, details: Record<string, unknown>): string {
+  if (drift) {
+    return encode({
+      code: "DRIFT",
+      status: "drift detected",
+      hooks: details,
+      help: ["doctl-axi setup hooks to reinstall"],
+    });
+  }
+  return encode({
+    code: "OK",
+    status: "hooks installed",
+    hooks: details,
+    help: ["doctl-axi setup hooks --check to verify"],
+  });
 }
 
 export async function setupCommand(args: string[], _context: unknown): Promise<string> {
@@ -95,20 +107,7 @@ export async function setupCommand(args: string[], _context: unknown): Promise<s
   const check = rest.includes("--check");
   if (check) {
     const { drift, details } = checkHooksDrift("doctl-axi");
-    if (drift) {
-      return encode({
-        code: "DRIFT",
-        status: "drift detected",
-        hooks: details,
-        help: ["doctl-axi setup hooks to reinstall"],
-      });
-    }
-    return encode({
-      code: "OK",
-      status: "hooks installed",
-      hooks: details,
-      help: ["doctl-axi setup hooks --check to verify"],
-    });
+    return hookStatusPayload(drift, details);
   }
 
   // install hooks idempotent
@@ -124,18 +123,5 @@ export async function setupCommand(args: string[], _context: unknown): Promise<s
 
   // after install, verify — if still drift (e.g., execPath ends with .ts via tsx), report DRIFT not OK
   const { drift: driftAfter, details: detailsAfter } = checkHooksDrift("doctl-axi");
-  if (driftAfter) {
-    return encode({
-      code: "DRIFT",
-      status: "drift detected",
-      hooks: detailsAfter,
-      help: ["doctl-axi setup hooks to reinstall"],
-    });
-  }
-  return encode({
-    code: "OK",
-    status: "hooks installed",
-    hooks: detailsAfter,
-    help: ["doctl-axi setup hooks --check to verify"],
-  });
+  return hookStatusPayload(driftAfter, detailsAfter);
 }

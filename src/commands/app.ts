@@ -1,8 +1,8 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlDelete, doctlJson, doctlRaw } from "../lib/doctl.js";
-import { projectFields, toAppToon, toAppDeploymentToon } from "../lib/toon.js";
+import { doctlDelete, doctlJson, doctlRaw, unwrapArray } from "../lib/doctl.js";
+import { projectFields, toAppToon, toAppDeploymentToon, truncateField } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
 const ALLOWED_FIELDS = ["id", "name", "region", "phase", "activeDeployment"];
 const ALLOWED_FIELDS_DEPLOY = ["id", "phase", "cause", "progress"];
@@ -98,19 +98,7 @@ async function appList(rawArgs: string[]): Promise<string> {
     ]);
   }
 
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) {
-      throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,region,phase,activeDeployment"]);
-    }
-    for (const f of requested) {
-      if (!ALLOWED_FIELDS.includes(f)) {
-        throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,phase,activeDeployment"]);
-      }
-    }
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
 
   const raw = await doctlJson<unknown>(["apps", "list"], contextFlag);
   const rawArray: unknown[] = Array.isArray(raw) ? raw : [];
@@ -228,7 +216,7 @@ async function appListDeployments(rawArgs: string[]): Promise<string> {
   if (!id) throw new AxiError("Missing id for app list-deployments", "VALIDATION_ERROR", ["Usage: doctl-axi app list-deployments <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app list-deployments --help`"]);
   const raw = await doctlJson<unknown>(["apps", "list-deployments", id], contextFlag);
-  const rawArray: unknown[] = Array.isArray(raw) ? raw : raw !== null && typeof raw === "object" && "deployments" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).deployments) ? ((raw as Record<string, unknown>).deployments as unknown[]) : [];
+  const rawArray: unknown[] = unwrapArray(raw, "deployments");
   if (rawArray.length === 0) return "0 deployments";
   const mapped = rawArray.map((it) => toAppDeploymentToon(it as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
@@ -272,7 +260,7 @@ async function appCreateDeployment(rawArgs: string[]): Promise<string> {
 
 async function appLogs(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
-  // logs may have extra args like component name and flags like --type etc but we keep simple
+  // logs accept their own flags (--type, --tail, ...); unknown flags still error
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
@@ -288,57 +276,19 @@ async function appLogs(rawArgs: string[]): Promise<string> {
     if (a === "--full" || a === "--help" || a === "-h" || a === "--fields" || a === "--context") continue;
     if (a.startsWith("--fields=") || a.startsWith("--context=") || a.startsWith("--type=") || a.startsWith("--tail=") || a.startsWith("--deployment=")) continue;
     if (allowedLogFlags.has(a)) continue;
-    // check value-taking flags skip next?
-    // unknown
-    if (a.startsWith("--")) {
-      // for test, unknown flag should error even in logs
-      // so throw if not allowed
-      // but if it's --type without =, we already continued if exactly --type, so skip
-      // Check if a is --bogus
-      throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `doctl-axi app logs --help` for available flags"]);
-    }
+    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `doctl-axi app logs --help` for available flags"]);
   }
-  const leftover = args.filter((a) => a.startsWith("-") && !allowedLogFlags.has(a) && a !== "--full" && a !== "--fields" && a !== "--context" && !a.startsWith("--type") && !a.startsWith("--tail") && !a.startsWith("--deployment"));
-  // Actually we already handled
 
-  // After handling flags, need id
-  // Extract values for known flags that take values, to not count as positional
-  const cleanArgs: string[] = [];
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (a === "--type" || a === "--tail" || a === "--deployment" || a === "--fields" || a === "--context") {
-      // skip value
-      cleanArgs.push(a);
-      if (i + 1 < args.length) {
-        cleanArgs.push(args[i + 1]);
-        i++;
-      }
-      continue;
-    }
-    if (a.startsWith("--type=") || a.startsWith("--tail=") || a.startsWith("--deployment=") || a.startsWith("--fields=") || a.startsWith("--context=") || a === "--full" || a === "--help" || a === "-h") {
-      cleanArgs.push(a);
-      continue;
-    }
-    if (allowedLogFlags.has(a) || a === "--no-prefix") {
-      cleanArgs.push(a);
-      continue;
-    }
-    cleanArgs.push(a);
-  }
-  // For simplicity, find first non-flag arg as app id
   const positional = args.filter((a) => !a.startsWith("-"));
   const appId = positional[0];
   const component = positional[1];
   if (!appId) throw new AxiError("Missing id for app logs", "VALIDATION_ERROR", ["Usage: doctl-axi app logs <id> [component]"]);
-  // Take --type etc values already handled but we also need to remove them from args for doctl call? We'll just pass baseArgs with appId and component
   const baseArgs = ["apps", "logs", appId];
   if (component) baseArgs.push(component);
-  // Use doctlRaw to handle text output
   const result = await doctlRaw(baseArgs, contextFlag);
   // result contains stdout+stderr; try to parse if json
   let logsText = result.stdout.trim();
   if (logsText.length === 0 && result.stderr.trim().length > 0) logsText = result.stderr.trim();
-  // Try parse JSON container { logs: "..."} ?
   try {
     const parsed = JSON.parse(logsText);
     if (parsed && typeof parsed === "object" && "logs" in (parsed as Record<string, unknown>)) {
@@ -348,11 +298,6 @@ async function appLogs(rawArgs: string[]): Promise<string> {
       logsText = parsed;
     }
   } catch {}
-  const MAX_BUFFER = 8000;
-  let display = logsText;
-  if (!full && display.length > MAX_BUFFER) {
-    const truncated = display.length - MAX_BUFFER;
-    display = `${display.slice(0, MAX_BUFFER)}... [truncated ${truncated} chars, use --full]`;
-  }
+  const display = truncateField(logsText, full);
   return encode({ logs: display, app: appId, help: [`app logs ${appId} --full for complete logs`] });
 }

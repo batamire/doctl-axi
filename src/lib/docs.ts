@@ -1,5 +1,4 @@
 import { AxiError } from "axi-sdk-js";
-import { TRUNCATION_LIMIT, truncateField } from "./toon.js";
 
 export const DOCS_BASE = "https://docs.digitalocean.com";
 export const LLMS_TXT_URL = `${DOCS_BASE}/llms.txt`;
@@ -126,9 +125,3 @@ export async function getDoc(path: string, _full = false): Promise<{ path: strin
   return { path: p, excerpt: md };
 }
 
-export function truncateExcerpt(excerpt: string, full: boolean): string {
-  return truncateField(excerpt, full);
-}
-
-// expose for tests
-export { TRUNCATION_LIMIT };

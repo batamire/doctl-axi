@@ -1,8 +1,8 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
+import { doctlJson, unwrapArray } from "../lib/doctl.js";
 import { projectFields, toInsightToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
 const ALLOWED_FIELDS = ["id", "name", "status", "target"];
 
@@ -53,21 +53,9 @@ async function uptimeList(rawArgs: string[]): Promise<string> {
   const leftover = args.filter((a) => a.startsWith("-"));
   if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime list --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime list --help`"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,status,target"]);
-    for (const f of requested) if (!ALLOWED_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,status,target"]);
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const raw = await doctlJson<unknown>(["monitoring", "uptime", "list"], contextFlag);
-  const rawArray: unknown[] = Array.isArray(raw)
-    ? raw
-    : raw !== null && typeof raw === "object" && "checks" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).checks)
-      ? ((raw as Record<string, unknown>).checks as unknown[])
-      : raw !== null && typeof raw === "object" && "uptime_checks" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).uptime_checks)
-        ? ((raw as Record<string, unknown>).uptime_checks as unknown[])
-        : [];
+  const rawArray: unknown[] = unwrapArray(raw, "checks", "uptime_checks");
   if (rawArray.length === 0) return "0 uptime checks";
   const mapped = rawArray.map((item) => toInsightToon(item as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);

@@ -1,10 +1,10 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
-import { toVolumeToon } from "../lib/toon.js";
+import { doctlJson, unwrapArray } from "../lib/doctl.js";
+import { projectFields, toVolumeToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, region: true, size: true, status: true };
+const ALLOWED_FIELDS = ["id", "name", "region", "size", "status"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -68,19 +68,7 @@ async function volumeList(rawArgs: string[]): Promise<string> {
     ]);
   }
 
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) {
-      throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,region,size,status"]);
-    }
-    for (const f of requested) {
-      if (!(f in ALLOWED_FIELDS)) {
-        throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,size,status"]);
-      }
-    }
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
 
   const raw = await doctlJson<unknown>(["compute", "volume", "list"], contextFlag);
   const rawArray: unknown[] = Array.isArray(raw)
@@ -93,16 +81,7 @@ async function volumeList(rawArgs: string[]): Promise<string> {
 
   const mapped = rawArray.map((item) => toVolumeToon(item as never, full));
 
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else {
-    filtered = mapped as unknown as Record<string, unknown>[];
-  }
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
 
   const totalCount = rawArray.length;
   const available = mapped.filter((d) => d.status === "available").length;

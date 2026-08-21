@@ -1,10 +1,10 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
-import { toRegionToon } from "../lib/toon.js";
+import { doctlJson, unwrapArray } from "../lib/doctl.js";
+import { projectFields, toRegionToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const ALLOWED_FIELDS: Record<string, true> = { slug: true, name: true, available: true };
+const ALLOWED_FIELDS = ["slug", "name", "available"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -43,29 +43,12 @@ async function regionList(rawArgs: string[]): Promise<string> {
   const leftover = args.filter((a) => a.startsWith("-"));
   if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi region list --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi region list --help`"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: slug,name,available"]);
-    for (const f of requested) if (!(f in ALLOWED_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: slug,name,available"]);
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const raw = await doctlJson<unknown>(["compute", "region", "list"], contextFlag);
-  const rawArray: unknown[] = Array.isArray(raw)
-    ? raw
-    : raw !== null && typeof raw === "object" && "regions" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).regions)
-      ? ((raw as Record<string, unknown>).regions as unknown[])
-      : [];
+  const rawArray: unknown[] = unwrapArray(raw, "regions");
   if (rawArray.length === 0) return "0 regions";
   const mapped = rawArray.map((item) => toRegionToon(item as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     regions: filtered,

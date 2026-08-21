@@ -53,3 +53,25 @@ export function takeFlagValue(args: string[], flag: string): string | undefined 
   }
   return undefined;
 }
+
+/**
+ * Parse and validate a `--fields` value against the allowed field names.
+ * Returns null when no value was given; throws VALIDATION_ERROR on an
+ * empty list or an unknown field, naming the available fields.
+ */
+export function parseFields(fieldsArg: string | undefined, allowed: string[]): string[] | null {
+  if (fieldsArg === undefined) return null;
+  const requested = fieldsArg
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (requested.length === 0) {
+    throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: " + allowed.join(",")]);
+  }
+  for (const f of requested) {
+    if (!allowed.includes(f)) {
+      throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: " + allowed.join(",")]);
+    }
+  }
+  return requested;
+}

@@ -75,10 +75,10 @@ export function toDropletToon(raw: DropletRaw, full: boolean): DropletToon {
   const size = extractSize(raw, full);
 
   const out: DropletToon = {
-    id: full ? id : truncateField(id, full),
+    id: truncateField(id, full),
     name: truncateField(nameRaw, full),
     region,
-    status: full ? statusRaw : truncateField(statusRaw, full),
+    status: truncateField(statusRaw, full),
     size,
   };
   return out;
@@ -143,7 +143,7 @@ export function toVolumeToon(raw: VolumeRaw, full: boolean): VolumeToon {
   const idRaw = raw.id;
   const id = idRaw !== undefined && idRaw !== null ? String(idRaw) : "";
   return {
-    id: full ? id : truncateField(id, full),
+    id: truncateField(id, full),
     name: truncateField(typeof raw.name === "string" ? raw.name : "", full),
     region: extractAt(raw, full, "region"),
     size: extractVolumeSize(raw, full),
@@ -172,7 +172,7 @@ export type NfsToon = {
 export function toNfsToon(raw: NfsRaw, full: boolean): NfsToon {
   const idRaw = raw.id;
   return {
-    id: full ? String(idRaw ?? "") : truncateField(String(idRaw ?? ""), full),
+    id: truncateField(String(idRaw ?? ""), full),
     name: truncateField(typeof raw.name === "string" ? raw.name : "", full),
     region: extractAt(raw, full, "region"),
     status: truncateField(typeof raw.status === "string" ? raw.status : "", full),
@@ -234,7 +234,7 @@ export type DedicatedInferenceToon = {
 export function toDedicatedInferenceToon(raw: DedicatedInferenceRaw, full: boolean): DedicatedInferenceToon {
   const idRaw = raw.id;
   return {
-    id: full ? String(idRaw ?? "") : truncateField(String(idRaw ?? ""), full),
+    id: truncateField(String(idRaw ?? ""), full),
     name: truncateField(typeof raw.name === "string" ? raw.name : "", full),
     region: extractAt(raw, full, "region"),
     status: truncateField(typeof raw.status === "string" ? raw.status : "", full),
@@ -264,7 +264,7 @@ export function toInsightToon(raw: InsightRaw, full: boolean): InsightToon {
   const idRaw = raw.id;
   const tgt = raw.target ?? raw.endpoint ?? raw.check_type;
   return {
-    id: full ? String(idRaw ?? "") : truncateField(String(idRaw ?? ""), full),
+    id: truncateField(String(idRaw ?? ""), full),
     name: truncateField(typeof raw.name === "string" ? raw.name : "", full),
     status: truncateField(typeof raw.status === "string" ? raw.status : "", full),
     target: truncateField(tgt !== undefined && tgt !== null ? String(tgt) : "", full),
@@ -517,8 +517,8 @@ export function toNetworkDomainToon(raw: NetworkDomainRaw, full: boolean): Netwo
   const recRaw = raw.records !== undefined && raw.records !== null ? String(raw.records) : "";
   return {
     name: truncateField(nameRaw, full),
-    ttl: full ? ttlRaw : truncateField(ttlRaw, full),
-    records: full ? recRaw : truncateField(recRaw, full),
+    ttl: truncateField(ttlRaw, full),
+    records: truncateField(recRaw, full),
   };
 }
 
@@ -529,11 +529,11 @@ export function toNetworkRecordToon(raw: NetworkRecordRaw, full: boolean): Netwo
   const dataRaw = typeof raw.data === "string" ? raw.data : "";
   const ttlRaw = raw.ttl !== undefined && raw.ttl !== null ? String(raw.ttl) : "";
   return {
-    id: full ? idRaw : truncateField(idRaw, full),
+    id: truncateField(idRaw, full),
     type: truncateField(typeRaw, full),
     name: truncateField(nameRaw, full),
     data: truncateField(dataRaw, full),
-    ttl: full ? ttlRaw : truncateField(ttlRaw, full),
+    ttl: truncateField(ttlRaw, full),
   };
 }
 
@@ -542,9 +542,9 @@ export function toNetworkFirewallToon(raw: NetworkFirewallRaw, full: boolean): N
   const nameRaw = typeof raw.name === "string" ? raw.name : "";
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   return {
-    id: full ? idRaw : truncateField(idRaw, full),
+    id: truncateField(idRaw, full),
     name: truncateField(nameRaw, full),
-    status: full ? statusRaw : truncateField(statusRaw, full),
+    status: truncateField(statusRaw, full),
   };
 }
 
@@ -554,10 +554,10 @@ export function toNetworkLoadBalancerToon(raw: NetworkLoadBalancerRaw, full: boo
   const region = extractAt(raw, full, "region");
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   return {
-    id: full ? idRaw : truncateField(idRaw, full),
+    id: truncateField(idRaw, full),
     name: truncateField(nameRaw, full),
     region,
-    status: full ? statusRaw : truncateField(statusRaw, full),
+    status: truncateField(statusRaw, full),
   };
 }
 
@@ -567,10 +567,10 @@ export function toNetworkVpcToon(raw: NetworkVpcRaw, full: boolean): NetworkVpcT
   const regionRaw = typeof raw.region === "string" ? raw.region : "";
   const ipRaw = typeof raw.ip_range === "string" ? raw.ip_range : typeof raw.ipRange === "string" ? raw.ipRange : "";
   return {
-    id: full ? idRaw : truncateField(idRaw, full),
+    id: truncateField(idRaw, full),
     name: truncateField(nameRaw, full),
-    region: full ? regionRaw : truncateField(regionRaw, full),
-    ipRange: full ? ipRaw : truncateField(ipRaw, full),
+    region: truncateField(regionRaw, full),
+    ipRange: truncateField(ipRaw, full),
   };
 }
 
@@ -580,10 +580,10 @@ export function toNetworkPeeringToon(raw: NetworkPeeringRaw, full: boolean): Net
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   const vpcIdsRaw = Array.isArray(raw.vpc_ids) ? raw.vpc_ids.join(",") : Array.isArray(raw.vpcIds) ? (raw.vpcIds as string[]).join(",") : typeof raw.vpc_ids === "string" ? raw.vpc_ids : "";
   return {
-    id: full ? idRaw : truncateField(idRaw, full),
+    id: truncateField(idRaw, full),
     name: truncateField(nameRaw, full),
-    status: full ? statusRaw : truncateField(statusRaw, full),
-    vpcIds: full ? vpcIdsRaw : truncateField(vpcIdsRaw, full),
+    status: truncateField(statusRaw, full),
+    vpcIds: truncateField(vpcIdsRaw, full),
   };
 }
 
@@ -593,10 +593,10 @@ export function toNetworkCdnToon(raw: NetworkCdnRaw, full: boolean): NetworkCdnT
   const endpointRaw = typeof raw.endpoint === "string" ? raw.endpoint : "";
   const ttlRaw = raw.ttl !== undefined && raw.ttl !== null ? String(raw.ttl) : "";
   return {
-    id: full ? idRaw : truncateField(idRaw, full),
+    id: truncateField(idRaw, full),
     origin: truncateField(originRaw, full),
     endpoint: truncateField(endpointRaw, full),
-    ttl: full ? ttlRaw : truncateField(ttlRaw, full),
+    ttl: truncateField(ttlRaw, full),
   };
 }
 
@@ -606,10 +606,10 @@ export function toNetworkCertificateToon(raw: NetworkCertificateRaw, full: boole
   const stateRaw = typeof raw.state === "string" ? raw.state : "";
   const typeRaw = typeof raw.type === "string" ? raw.type : "";
   return {
-    id: full ? idRaw : truncateField(idRaw, full),
+    id: truncateField(idRaw, full),
     name: truncateField(nameRaw, full),
-    state: full ? stateRaw : truncateField(stateRaw, full),
-    type: full ? typeRaw : truncateField(typeRaw, full),
+    state: truncateField(stateRaw, full),
+    type: truncateField(typeRaw, full),
   };
 }
 
@@ -624,9 +624,9 @@ export function toNetworkReservedIpToon(raw: NetworkReservedIpRaw, full: boolean
     dropletId = String(raw.droplet_id);
   } else if (typeof raw.droplet === "string") dropletId = raw.droplet;
   return {
-    ip: full ? ipRaw : truncateField(ipRaw, full),
+    ip: truncateField(ipRaw, full),
     region,
-    dropletId: full ? dropletId : truncateField(dropletId, full),
+    dropletId: truncateField(dropletId, full),
   };
 }
 // ---- App ----
@@ -683,7 +683,7 @@ export function toAppToon(raw: AppRaw, full: boolean): AppToon {
   const idRaw = raw.id;
   const id = idRaw !== undefined && idRaw !== null ? String(idRaw) : "";
   return {
-    id: full ? id : truncateField(id, full),
+    id: truncateField(id, full),
     name: extractAppName(raw, full),
     region: extractAt(raw, full, "region"),
     phase: extractAppPhase(raw, full),
@@ -918,10 +918,10 @@ export function toKubernetesToon(raw: KubernetesRaw, full: boolean): KubernetesT
   const region = extractAt(raw, full, "region");
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   return {
-    id: full ? id : truncateField(id, full),
+    id: truncateField(id, full),
     name: truncateField(nameRaw, full),
     region,
-    status: full ? statusRaw : truncateField(statusRaw, full),
+    status: truncateField(statusRaw, full),
   };
 }
 
@@ -934,12 +934,12 @@ export function toDatabaseToon(raw: DatabaseRaw, full: boolean): DatabaseToon {
   const regionRaw = typeof raw.region === "string" ? raw.region : "";
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   return {
-    id: full ? id : truncateField(id, full),
+    id: truncateField(id, full),
     name: truncateField(nameRaw, full),
-    engine: full ? engineRaw : truncateField(engineRaw, full),
-    version: full ? versionRaw : truncateField(versionRaw, full),
-    region: full ? regionRaw : truncateField(regionRaw, full),
-    status: full ? statusRaw : truncateField(statusRaw, full),
+    engine: truncateField(engineRaw, full),
+    version: truncateField(versionRaw, full),
+    region: truncateField(regionRaw, full),
+    status: truncateField(statusRaw, full),
   };
 }
 
@@ -1027,11 +1027,11 @@ export function toNodePoolToon(raw: NodePoolRaw, full: boolean): NodePoolToon {
   const countRaw = raw.count !== undefined && raw.count !== null ? String(raw.count) : "";
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   return {
-    id: full ? id : truncateField(id, full),
+    id: truncateField(id, full),
     name: truncateField(nameRaw, full),
-    size: full ? sizeRaw : truncateField(sizeRaw, full),
-    count: full ? countRaw : truncateField(countRaw, full),
-    status: full ? statusRaw : truncateField(statusRaw, full),
+    size: truncateField(sizeRaw, full),
+    count: truncateField(countRaw, full),
+    status: truncateField(statusRaw, full),
   };
 }
 

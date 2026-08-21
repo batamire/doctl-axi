@@ -11,8 +11,9 @@ import {
   toNetworkCertificateToon,
   toNetworkReservedIpToon,
 } from "../lib/toon.js";
+import { projectFields } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -95,52 +96,18 @@ function extractArray(raw: unknown): unknown[] {
   return [];
 }
 
-function parseFieldsArg(fieldsArg: string | undefined, allowed: string[], sub: string, verb: string): string[] | null {
-  if (fieldsArg === undefined) return null;
-  const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-  if (requested.length === 0) {
-    throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", [
-      `Available: ${allowed.join(",")}`,
-    ]);
-  }
-  for (const f of requested) {
-    if (!allowed.includes(f)) {
-      throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", [
-        `Available: ${allowed.join(",")}`,
-      ]);
-    }
-  }
-  return requested;
-}
-
-function filterByFields<T extends Record<string, unknown>>(items: T[], fields: string[] | null): Record<string, unknown>[] {
-  if (!fields) return items as unknown as Record<string, unknown>[];
-  return items.map((it) => {
-    const obj: Record<string, unknown> = {};
-    for (const f of fields) obj[f] = it[f];
-    return obj;
-  });
-}
 
 export async function networkCommand(args: string[], _context: unknown): Promise<string> {
-  // top-level --help
-  if (args.length === 0 || args.includes("--help") && args.length === 1 || args.includes("-h") && args.length === 1) {
-    // if args is exactly --help or empty, show help
-    if (args.length === 0) {
-      throw new AxiError("Missing subcommand for network", "VALIDATION_ERROR", [
-        `Available: ${SUBCOMMANDS.join(", ")}`,
-        "Run `doctl-axi network --help`",
-      ]);
-    }
-    // args contains help flag and no sub? Already handled missing sub below
+  if (args.length === 0) {
+    throw new AxiError("Missing subcommand for network", "VALIDATION_ERROR", [
+      `Available: ${SUBCOMMANDS.join(", ")}`,
+      "Run `doctl-axi network --help`",
+    ]);
   }
-  // Check if first arg is help flag
-  if (args[0] === "--help" || args[0] === "-h") {
-    return NETWORK_HELP;
-  }
+  if (args[0] === "--help" || args[0] === "-h") return NETWORK_HELP;
 
   const sub = args[0];
-  if (!sub || sub.startsWith("-")) {
+  if (sub.startsWith("-")) {
     throw new AxiError("Missing subcommand for network", "VALIDATION_ERROR", [
       `Available: ${SUBCOMMANDS.join(", ")}`,
       "Run `doctl-axi network --help`",
@@ -154,15 +121,15 @@ export async function networkCommand(args: string[], _context: unknown): Promise
   }
 
   const remaining = args.slice(1);
-  // sub-level help: network domain --help
-  if (remaining.length === 1 && (remaining[0] === "--help" || remaining[0] === "-h")) {
-    return NETWORK_HELP;
-  }
   if (remaining.length === 0) {
     throw new AxiError(`Missing verb for network ${sub}`, "VALIDATION_ERROR", [
       `Available: ${VERBS.join(", ")}`,
       `Run \`doctl-axi network ${sub} --help\``,
     ]);
+  }
+  // sub-level help: network domain --help
+  if (remaining.length === 1 && (remaining[0] === "--help" || remaining[0] === "-h")) {
+    return NETWORK_HELP;
   }
 
   const verb = remaining[0];
@@ -180,19 +147,8 @@ export async function networkCommand(args: string[], _context: unknown): Promise
   }
 
   const verbArgs = remaining.slice(1);
-
-  // verb-level help
-  if (verbArgs.includes("--help") || verbArgs.includes("-h")) {
-    // if verbArgs only contains help, return network help
-    if (verbArgs.length === 1) return NETWORK_HELP;
-    // otherwise strip help and treat as help request (return help)
-    if (verbArgs.length === 1 && (verbArgs[0] === "--help" || verbArgs[0] === "-h")) return NETWORK_HELP;
-  }
-  // Early help detection: if any --help in verbArgs and no other logic, return help
-  if (verbArgs.includes("--help") || verbArgs.includes("-h")) {
-    // if help flag present among verbArgs, return help (after validating unknown flags? skip)
-    return NETWORK_HELP;
-  }
+  // any help flag among verb args shows help
+  if (verbArgs.includes("--help") || verbArgs.includes("-h")) return NETWORK_HELP;
 
   switch (sub as Sub) {
     case "domain":
@@ -232,7 +188,7 @@ async function handleDomain(verb: string, rawArgs: string[], sub: string): Promi
       `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`,
     ]);
   }
-  const fields = parseFieldsArg(fieldsArg, DOMAIN_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, DOMAIN_FIELDS);
   if (verb === "list") {
     if (args.length > 0) {
       throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
@@ -243,7 +199,7 @@ async function handleDomain(verb: string, rawArgs: string[], sub: string): Promi
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network domains";
     const mapped = arr.map((item) => toNetworkDomainToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     const payload: Record<string, unknown> = {
       count: `${mapped.length} total`,
       domains: filtered,
@@ -259,7 +215,7 @@ async function handleDomain(verb: string, rawArgs: string[], sub: string): Promi
     const arr = extractArray(raw);
     const item = arr[0] ?? raw;
     const mapped = toNetworkDomainToon(item as Record<string, unknown> as never, full);
-    const filtered = filterByFields([mapped as unknown as Record<string, unknown>], fields);
+    const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields);
     return encode({ domain: filtered[0], help: ["doctl-axi network domain list --full for complete fields"] });
   }
   if (verb === "create") {
@@ -295,7 +251,7 @@ async function handleRecord(verb: string, rawArgs: string[], sub: string): Promi
       `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`,
     ]);
   }
-  const fields = parseFieldsArg(fieldsArg, RECORD_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, RECORD_FIELDS);
   if (verb === "list") {
     if (args.length === 0) throw new AxiError("Missing domain for record list", "VALIDATION_ERROR", [`Run \`doctl-axi network record list --help\``]);
     const domain = args[0];
@@ -304,7 +260,7 @@ async function handleRecord(verb: string, rawArgs: string[], sub: string): Promi
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network records";
     const mapped = arr.map((item) => toNetworkRecordToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     const payload: Record<string, unknown> = {
       count: `${mapped.length} total`,
       records: filtered,
@@ -359,14 +315,14 @@ async function handleFirewall(verb: string, rawArgs: string[], sub: string): Pro
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFieldsArg(fieldsArg, FIREWALL_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, FIREWALL_FIELDS);
   if (verb === "list") {
     if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
     const raw = await doctlJson<unknown>(["compute", "firewall", "list"], contextFlag);
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network firewalls";
     const mapped = arr.map((item) => toNetworkFirewallToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     return encode({ count: `${mapped.length} total`, firewalls: filtered, help: ["doctl-axi network firewall list --full for complete fields"] });
   }
   if (verb === "get") {
@@ -403,14 +359,14 @@ async function handleLoadBalancer(verb: string, rawArgs: string[], sub: string):
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFieldsArg(fieldsArg, LB_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, LB_FIELDS);
   if (verb === "list") {
     if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
     const raw = await doctlJson<unknown>(["compute", "load-balancer", "list"], contextFlag);
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network load-balancers";
     const mapped = arr.map((item) => toNetworkLoadBalancerToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     return encode({ count: `${mapped.length} total`, load_balancers: filtered, help: ["doctl-axi network load-balancer list --full for complete fields"] });
   }
   if (verb === "get") {
@@ -447,14 +403,14 @@ async function handleVpc(verb: string, rawArgs: string[], sub: string): Promise<
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFieldsArg(fieldsArg, VPC_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, VPC_FIELDS);
   if (verb === "list") {
     if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
     const raw = await doctlJson<unknown>(["vpcs", "list"], contextFlag);
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network vpcs";
     const mapped = arr.map((item) => toNetworkVpcToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     return encode({ count: `${mapped.length} total`, vpcs: filtered, help: ["doctl-axi network vpc list --full for complete fields"] });
   }
   if (verb === "get") {
@@ -491,14 +447,14 @@ async function handlePeering(verb: string, rawArgs: string[], sub: string): Prom
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFieldsArg(fieldsArg, PEERING_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, PEERING_FIELDS);
   if (verb === "list") {
     if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
     const raw = await doctlJson<unknown>(["vpcs", "peerings", "list"], contextFlag);
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network peerings";
     const mapped = arr.map((item) => toNetworkPeeringToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     return encode({ count: `${mapped.length} total`, peerings: filtered, help: ["doctl-axi network peering list --full for complete fields"] });
   }
   if (verb === "get") {
@@ -535,14 +491,14 @@ async function handleCdn(verb: string, rawArgs: string[], sub: string): Promise<
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFieldsArg(fieldsArg, CDN_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, CDN_FIELDS);
   if (verb === "list") {
     if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
     const raw = await doctlJson<unknown>(["compute", "cdn", "list"], contextFlag);
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network cdns";
     const mapped = arr.map((item) => toNetworkCdnToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     return encode({ count: `${mapped.length} total`, cdns: filtered, help: ["doctl-axi network cdn list --full for complete fields"] });
   }
   if (verb === "get") {
@@ -579,14 +535,14 @@ async function handleCertificate(verb: string, rawArgs: string[], sub: string): 
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFieldsArg(fieldsArg, CERT_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, CERT_FIELDS);
   if (verb === "list") {
     if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
     const raw = await doctlJson<unknown>(["compute", "certificate", "list"], contextFlag);
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network certificates";
     const mapped = arr.map((item) => toNetworkCertificateToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     return encode({ count: `${mapped.length} total`, certificates: filtered, help: ["doctl-axi network certificate list --full for complete fields"] });
   }
   if (verb === "get") {
@@ -623,14 +579,14 @@ async function handleReservedIp(verb: string, rawArgs: string[], sub: string): P
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFieldsArg(fieldsArg, RIP_FIELDS, sub, verb);
+  const fields = parseFields(fieldsArg, RIP_FIELDS);
   if (verb === "list") {
     if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
     const raw = await doctlJson<unknown>(["compute", "reserved-ip", "list"], contextFlag);
     const arr = extractArray(raw);
     if (arr.length === 0) return "0 network reserved-ips";
     const mapped = arr.map((item) => toNetworkReservedIpToon(item as Record<string, unknown> as never, full));
-    const filtered = filterByFields(mapped as unknown as Record<string, unknown>[], fields);
+    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
     return encode({ count: `${mapped.length} total`, reserved_ips: filtered, help: ["doctl-axi network reserved-ip list --full for complete fields"] });
   }
   if (verb === "get") {

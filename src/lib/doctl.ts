@@ -4,6 +4,21 @@ import { AxiError } from "axi-sdk-js";
 
 export const MAX_BUFFER = 10 * 1024 * 1024;
 
+/**
+ * Unwrap a doctl payload to an array: an array passes through; an object
+ * yields the first named key holding an array; anything else is empty.
+ */
+export function unwrapArray(raw: unknown, ...keys: string[]): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    for (const k of keys) {
+      if (Array.isArray(obj[k])) return obj[k] as unknown[];
+    }
+  }
+  return [];
+}
+
 type ExecResult = {
   stdout: string;
   stderr: string;

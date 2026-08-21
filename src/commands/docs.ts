@@ -1,7 +1,8 @@
 import { AxiError } from "axi-sdk-js";
 import { encode } from "@toon-format/toon";
-import { searchDocs, getDoc, truncateExcerpt, clearDocsCache } from "../lib/docs.js";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { searchDocs, getDoc, clearDocsCache } from "../lib/docs.js";
+import { projectFields, truncateField } from "../lib/toon.js";
+import { rejectUnknownFlags, takeBoolFlag, takeFlagValue, parseFields } from "../lib/args.js";
 
 const ALLOWED_FLAGS = ["--full", "--fields"];
 
@@ -18,22 +19,6 @@ function applyFieldsFilter<T extends Record<string, unknown>>(items: T[], fields
   });
 }
 
-function validateFields(fieldsArg: string | undefined, allowed: string[]): string[] | null {
-  if (fieldsArg === undefined) return null;
-  const requested = fieldsArg
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (requested.length === 0) {
-    throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: " + allowed.join(",")]);
-  }
-  for (const f of requested) {
-    if (!allowed.includes(f)) {
-      throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: " + allowed.join(",")]);
-    }
-  }
-  return requested;
-}
 
 export const DOCS_HELP = encode({
   command: "docs",
@@ -197,14 +182,9 @@ export async function docsCommand(args: string[], _context: unknown): Promise<st
   }
 }
 
-// used by tests to clear cache
-export function __clearDocsCacheForTest(): void {
-  clearDocsCache();
-}
-
 async function handleSearch(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
   const allowed = ["path", "title", "excerpt"];
-  const fields = validateFields(fieldsArg, allowed);
+  const fields = parseFields(fieldsArg, allowed);
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <query>", "VALIDATION_ERROR", [
       "Usage: doctl-axi docs search <query> [--full] [--fields path,title,excerpt]",
@@ -218,11 +198,11 @@ async function handleSearch(args: string[], full: boolean, fieldsArg: string | u
     throw new AxiError("Missing required argument: <query>", "VALIDATION_ERROR", []);
   }
   const results = await searchDocs(query, full);
-  // apply truncation uniformly with 8k policy via truncateExcerpt
+  // apply truncation uniformly with the 8k policy
   const mapped = results.map((r) => ({
-    path: truncateExcerpt(r.path, full),
-    title: truncateExcerpt(r.title, full),
-    excerpt: truncateExcerpt(r.excerpt, full),
+    path: truncateField(r.path, full),
+    title: truncateField(r.title, full),
+    excerpt: truncateField(r.excerpt, full),
   }));
   if (mapped.length === 0) {
     return encode({
@@ -247,7 +227,7 @@ async function handleSearch(args: string[], full: boolean, fieldsArg: string | u
 
 async function handleGet(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
   const allowed = ["path", "excerpt", "title"];
-  const fields = validateFields(fieldsArg, allowed);
+  const fields = parseFields(fieldsArg, allowed);
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
       "Usage: doctl-axi docs get <path> [--full]",
@@ -259,7 +239,7 @@ async function handleGet(args: string[], full: boolean, fieldsArg: string | unde
   }
   const { path, excerpt } = await getDoc(docPath, full);
   // truncate excerpt if needed
-  const truncated = truncateExcerpt(excerpt, full);
+  const truncated = truncateField(excerpt, full);
   // Derive title from markdown # heading as fallback; basename of path if no heading found
   const titleFromMd = (() => {
     const m = excerpt.match(/^#\s+(.+)$/m);
@@ -267,26 +247,15 @@ async function handleGet(args: string[], full: boolean, fieldsArg: string | unde
     const last = path.split("/").filter(Boolean).pop();
     return last ? last : path;
   })();
-  const title = truncateExcerpt(titleFromMd, full);
+  const title = truncateField(titleFromMd, full);
   const help = [`docs search "${path.split("/").filter(Boolean).pop() ?? "droplets"}" --full`, "docs get-related " + path + " for related pages", "docs find-for-service <service> for service docs"];
-  // Build payload respects fields
-  let payload: Record<string, unknown>;
-  if (fields) {
-    const obj: Record<string, unknown> = {};
-    const fullObj: Record<string, unknown> = { path, excerpt: truncated, title };
-    for (const f of fields) obj[f] = fullObj[f];
-    // still include help outside fields? Help always included
-    payload = { ...obj, help };
-    // if path not in fields but help needs path, still payload has help
-  } else {
-    payload = { path, excerpt: truncated, title, help };
-  }
+  const payload = { ...projectFields([{ path, excerpt: truncated, title }], fields)[0], help };
   return encode(payload);
 }
 
 async function handleFindForService(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
   const allowed = ["path", "title", "excerpt"];
-  const fields = validateFields(fieldsArg, allowed);
+  const fields = parseFields(fieldsArg, allowed);
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <service>", "VALIDATION_ERROR", [
       "Usage: doctl-axi docs find-for-service <service>",
@@ -295,9 +264,9 @@ async function handleFindForService(args: string[], full: boolean, fieldsArg: st
   const service = args.join(" ").trim();
   const results = await searchDocs(service, full);
   const mapped = results.map((r) => ({
-    path: truncateExcerpt(r.path, full),
-    title: truncateExcerpt(r.title, full),
-    excerpt: truncateExcerpt(r.excerpt, full),
+    path: truncateField(r.path, full),
+    title: truncateField(r.title, full),
+    excerpt: truncateField(r.excerpt, full),
   }));
   if (mapped.length === 0) {
     return encode({
@@ -326,26 +295,18 @@ async function handleGetQuickstart(args: string[], full: boolean, fieldsArg: str
     throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", []);
   }
   const allowed = ["path", "excerpt", "title"];
-  const fields = validateFields(fieldsArg, allowed);
+  const fields = parseFields(fieldsArg, allowed);
   const { path, excerpt } = await getDoc(docPath, full);
-  const truncated = truncateExcerpt(excerpt, full);
+  const truncated = truncateField(excerpt, full);
   const titleFromMd = (() => {
     const m = excerpt.match(/^#\s+(.+)$/m);
     if (m && m[1]) return m[1].trim();
     const last = path.split("/").filter(Boolean).pop();
     return last ? last : path;
   })();
-  const title = truncateExcerpt(titleFromMd, full);
+  const title = truncateField(titleFromMd, full);
   const help = ["docs get " + path + " for full page", `docs search "${path.split("/").filter(Boolean).pop() ?? "droplets"}" --full`];
-  let payload: Record<string, unknown>;
-  if (fields) {
-    const obj: Record<string, unknown> = {};
-    const fullObj: Record<string, unknown> = { path, excerpt: truncated, title };
-    for (const f of fields) obj[f] = fullObj[f];
-    payload = { ...obj, help };
-  } else {
-    payload = { path, excerpt: truncated, title, help };
-  }
+  const payload = { ...projectFields([{ path, excerpt: truncated, title }], fields)[0], help };
   return encode(payload);
 }
 async function handleTroubleshoot(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
@@ -359,32 +320,24 @@ async function handleTroubleshoot(args: string[], full: boolean, fieldsArg: stri
     throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", []);
   }
   const allowed = ["path", "excerpt", "title"];
-  const fields = validateFields(fieldsArg, allowed);
+  const fields = parseFields(fieldsArg, allowed);
   const { path, excerpt } = await getDoc(docPath, full);
-  const truncated = truncateExcerpt(excerpt, full);
+  const truncated = truncateField(excerpt, full);
   const titleFromMd = (() => {
     const m = excerpt.match(/^#\s+(.+)$/m);
     if (m && m[1]) return m[1].trim();
     const last = path.split("/").filter(Boolean).pop();
     return last ? last : path;
   })();
-  const title = truncateExcerpt(titleFromMd, full);
+  const title = truncateField(titleFromMd, full);
   const help = ["docs get " + path + " for full page", `docs search "troubleshoot ${path.split("/").filter(Boolean).pop() ?? ""}" --full`];
-  let payload: Record<string, unknown>;
-  if (fields) {
-    const obj: Record<string, unknown> = {};
-    const fullObj: Record<string, unknown> = { path, excerpt: truncated, title };
-    for (const f of fields) obj[f] = fullObj[f];
-    payload = { ...obj, help };
-  } else {
-    payload = { path, excerpt: truncated, title, help };
-  }
+  const payload = { ...projectFields([{ path, excerpt: truncated, title }], fields)[0], help };
   return encode(payload);
 }
 
 async function handleGetRelated(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
   const allowed = ["path", "title", "excerpt"];
-  const fields = validateFields(fieldsArg, allowed);
+  const fields = parseFields(fieldsArg, allowed);
   if (args.length === 0) {
     throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
       "Usage: doctl-axi docs get-related <path>",
@@ -396,9 +349,9 @@ async function handleGetRelated(args: string[], full: boolean, fieldsArg: string
   const results = await searchDocs(segment, full);
   // Filter to not include exact path? keep all
   const mapped = results.map((r) => ({
-    path: truncateExcerpt(r.path, full),
-    title: truncateExcerpt(r.title, full),
-    excerpt: truncateExcerpt(r.excerpt, full),
+    path: truncateField(r.path, full),
+    title: truncateField(r.title, full),
+    excerpt: truncateField(r.excerpt, full),
   }));
   if (mapped.length === 0) {
     return encode({

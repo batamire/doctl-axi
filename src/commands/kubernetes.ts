@@ -1,9 +1,9 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson, doctlRaw, mapDoctlError } from "../lib/doctl.js";
-import { toKubernetesToon, toNodePoolToon, truncateField } from "../lib/toon.js";
+import { projectFields, toKubernetesToon, toNodePoolToon, truncateField } from "../lib/toon.js";
 import type { KubernetesRaw, NodePoolRaw } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -121,20 +121,7 @@ async function kubernetesClusterList(rawArgs: string[]): Promise<string> {
       "Run `doctl-axi kubernetes cluster list --help`",
     ]);
   }
-  const allowed = new Set(["id", "name", "region", "status"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) {
-      throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,region,status"]);
-    }
-    for (const f of requested) {
-      if (!allowed.has(f)) {
-        throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,status"]);
-      }
-    }
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ["id", "name", "region", "status"]);
   const raw = await doctlJson<unknown>("kubernetes cluster list".split(" "), contextFlag);
   const rawArray = Array.isArray(raw) ? raw : [];
   if (rawArray.length === 0) {
@@ -145,16 +132,7 @@ async function kubernetesClusterList(rawArgs: string[]): Promise<string> {
     const rawK = rec as unknown as KubernetesRaw;
     return toKubernetesToon(rawK, full);
   });
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else {
-    filtered = mapped as unknown as Record<string, unknown>[];
-  }
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const totalCount = rawArray.length;
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${totalCount} total`,
@@ -201,12 +179,7 @@ async function kubernetesClusterGet(rawArgs: string[]): Promise<string> {
     throw new AxiError(`Cluster ${id} not found`, "NOT_FOUND", []);
   }
   const mapped = toKubernetesToon(rec as unknown as KubernetesRaw, full);
-  let filtered: Record<string, unknown> = mapped as unknown as Record<string, unknown>;
-  if (fields) {
-    const obj: Record<string, unknown> = {};
-    for (const f of fields) obj[f] = (mapped as Record<string, unknown>)[f];
-    filtered = obj;
-  }
+  const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
   const payload: Record<string, unknown> = {
     cluster: filtered,
     help: ["doctl-axi kubernetes cluster list --full"],
@@ -236,12 +209,7 @@ async function kubernetesClusterCreate(rawArgs: string[]): Promise<string> {
     return encode({ result: raw, help: ["doctl-axi kubernetes cluster list"] });
   }
   const mapped = toKubernetesToon(rec as unknown as KubernetesRaw, full);
-  let filtered: Record<string, unknown> = mapped as unknown as Record<string, unknown>;
-  if (fields) {
-    const obj: Record<string, unknown> = {};
-    for (const f of fields) obj[f] = (mapped as Record<string, unknown>)[f];
-    filtered = obj;
-  }
+  const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
   return encode({ cluster: filtered, help: ["doctl-axi kubernetes cluster list"] });
 }
 
@@ -264,11 +232,6 @@ async function kubernetesClusterDelete(rawArgs: string[]): Promise<string> {
   const id = args[0];
   const raw = await doctlDelete<unknown>(["kubernetes", "cluster", "delete", id], contextFlag);
   if (raw === null) return encode({ delete: "already_deleted", cluster: id, help: ["doctl-axi kubernetes cluster list"] });
-  // delete may return empty or object
-  if (Array.isArray(raw) && raw.length === 0) {
-    return encode({ deleted: id, help: ["doctl-axi kubernetes cluster list"] });
-  }
-  // if raw is object with maybe id, encode
   return encode({ deleted: id, help: ["doctl-axi kubernetes cluster list"] });
 }
 
@@ -355,14 +318,7 @@ async function nodePoolList(rawArgs: string[]): Promise<string> {
   if (args.length > 1) {
     throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes node-pool list <cluster-id>"]);
   }
-  const allowed = new Set(["id", "name", "size", "count", "status"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,size,count,status"]);
-    for (const f of requested) if (!allowed.has(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,size,count,status"]);
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ["id", "name", "size", "count", "status"]);
   const raw = await doctlJson<unknown>(["kubernetes", "cluster", "node-pool", "list", clusterId], contextFlag);
   const rawArray = Array.isArray(raw) ? raw : [];
   if (rawArray.length === 0) {
@@ -372,16 +328,7 @@ async function nodePoolList(rawArgs: string[]): Promise<string> {
     const rec = item as Record<string, unknown>;
     return toNodePoolToon(rec as unknown as NodePoolRaw, full);
   });
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else {
-    filtered = mapped as unknown as Record<string, unknown>[];
-  }
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     pools: filtered,

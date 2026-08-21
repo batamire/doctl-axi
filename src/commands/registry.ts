@@ -1,15 +1,15 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson } from "../lib/doctl.js";
 import {
+  projectFields,
   toRegistryRepositoryToon,
   toRegistryTagToon,
   toRegistryManifestToon,
   toRegistryGCToon,
 } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
-
-const ALLOWED_REPO_FIELDS: Record<string, true> = { name: true, registry: true, tagCount: true, manifestCount: true };
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+const ALLOWED_REPO_FIELDS = ["name", "registry", "tagCount", "manifestCount"];
 const ALLOWED_TAG_FIELDS: Record<string, true> = { repository: true, tag: true, digest: true, updatedAt: true };
 const ALLOWED_MANIFEST_FIELDS: Record<string, true> = { repository: true, digest: true, tags: true, size: true };
 const ALLOWED_GC_FIELDS: Record<string, true> = { id: true, registry: true, status: true, blobsDeleted: true };
@@ -117,13 +117,7 @@ async function registryRepositoryList(rawArgs: string[]): Promise<string> {
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry repository list --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry repository list --help`"]);
 
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (req.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: name,registry,tagCount,manifestCount"]);
-    for (const f of req) if (!(f in ALLOWED_REPO_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: name,registry,tagCount,manifestCount"]);
-    fields = req;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_REPO_FIELDS);
 
   const baseArgs = ["registry", "repository", "list-v2"];
   if (registryFlag) {
@@ -133,14 +127,7 @@ async function registryRepositoryList(rawArgs: string[]): Promise<string> {
   const rawArray: unknown[] = Array.isArray(raw) ? raw : [];
   if (rawArray.length === 0) return "0 repositories";
   const mapped = rawArray.map((it) => toRegistryRepositoryToon(it as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
     count: `${mapped.length} of ${mapped.length} total`,
     repositories: filtered,
@@ -173,14 +160,7 @@ async function registryTagList(rawArgs: string[]): Promise<string> {
   const rawArray: unknown[] = Array.isArray(raw) ? raw : [];
   if (rawArray.length === 0) return "0 tags";
   const mapped = rawArray.map((it) => toRegistryTagToon(it as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
     count: `${mapped.length} of ${mapped.length} total`,
     tags: filtered,
@@ -244,14 +224,7 @@ async function registryManifestList(rawArgs: string[]): Promise<string> {
   const rawArray: unknown[] = Array.isArray(raw) ? raw : [];
   if (rawArray.length === 0) return "0 manifests";
   const mapped = rawArray.map((it) => toRegistryManifestToon(it as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
     count: `${mapped.length} of ${mapped.length} total`,
     manifests: filtered,
@@ -281,14 +254,7 @@ async function registryGCList(rawArgs: string[]): Promise<string> {
   const rawArray: unknown[] = Array.isArray(raw) ? raw : [];
   if (rawArray.length === 0) return "0 garbage-collections";
   const mapped = rawArray.map((it) => toRegistryGCToon(it as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
     count: `${mapped.length} of ${mapped.length} total`,
     garbageCollections: filtered,

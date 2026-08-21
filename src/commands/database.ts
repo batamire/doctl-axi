@@ -1,15 +1,15 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson } from "../lib/doctl.js";
 import {
-  projectFields,
   toDatabasePoolToon,
+  projectFields,
   toDatabaseTopicToon,
   toDatabaseToon,
   toDatabaseUserToon,
 } from "../lib/toon.js";
 import type { DatabasePoolRaw, DatabaseRaw, DatabaseTopicRaw, DatabaseUserRaw } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -98,14 +98,7 @@ async function databaseList(rawArgs: string[]): Promise<string> {
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi database list --help`"]);
   }
-  const allowed = new Set(["id", "name", "engine", "version", "region", "status"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,engine,version,region,status"]);
-    for (const f of requested) if (!allowed.has(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,engine,version,region,status"]);
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ["id", "name", "engine", "version", "region", "status"]);
   const raw = await doctlJson<unknown>(["databases", "list"], contextFlag);
   const rawArray = Array.isArray(raw) ? raw : [];
   if (rawArray.length === 0) {
@@ -188,7 +181,6 @@ async function databaseDelete(rawArgs: string[]): Promise<string> {
   const id = args[0];
   const raw = await doctlDelete<unknown>(["databases", "delete", id], contextFlag);
   if (raw === null) return encode({ delete: "already_deleted", database: id, help: ["doctl-axi database list"] });
-  if (Array.isArray(raw) && raw.length === 0) return encode({ deleted: id, help: ["doctl-axi database list"] });
   return encode({ deleted: id, help: ["doctl-axi database list"] });
 }
 
@@ -197,10 +189,8 @@ async function databaseDelete(rawArgs: string[]): Promise<string> {
 function takeSubActionArgs(
   rawArgs: string[],
   allowedFields?: string[],
-): { action: string; remaining: string[]; full: boolean; contextFlag?: string; fields?: string[] } {
-  if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
-    throw new AxiError("__HELP__", "VALIDATION_ERROR", []);
-  }
+): { action: string; remaining: string[]; full: boolean; contextFlag?: string; fields?: string[] } | null {
+  if (rawArgs.includes("--help") || rawArgs.includes("-h")) return null;
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
@@ -214,16 +204,7 @@ function takeSubActionArgs(
         "Run `doctl-axi database --help` for available flags",
       ]);
     }
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) {
-      throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", [`Available: ${allowedFields.join(",")}`]);
-    }
-    for (const f of requested) {
-      if (!allowedFields.includes(f)) {
-        throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", [`Available: ${allowedFields.join(",")}`]);
-      }
-    }
-    fields = requested;
+    fields = parseFields(fieldsArg, allowedFields) ?? undefined;
   }
   if (args.length === 0) throw new AxiError("Missing action", "VALIDATION_ERROR", ["Available: list, get, create, delete"]);
   const action = args[0];
@@ -266,13 +247,8 @@ async function databaseSubResource(rawArgs: string[], cfg: SubResourceConfig): P
   const { verb, plural, fields: allowedFields, toToon } = cfg;
   const Noun = verb[0].toUpperCase() + verb.slice(1);
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
-  let parsed: { action: string; remaining: string[]; full: boolean; contextFlag?: string; fields?: string[] };
-  try {
-    parsed = takeSubActionArgs(rawArgs, allowedFields);
-  } catch (e) {
-    if (e instanceof AxiError && e.message === "__HELP__") return DATABASE_HELP;
-    throw e;
-  }
+  const parsed = takeSubActionArgs(rawArgs, allowedFields);
+  if (parsed === null) return DATABASE_HELP;
   const { action, remaining, full, contextFlag, fields } = parsed;
   if (action === "list") {
     if (remaining.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", [`Usage: doctl-axi database ${verb} list <db-id>`]);
@@ -312,13 +288,8 @@ async function databaseSubResource(rawArgs: string[], cfg: SubResourceConfig): P
 
 async function databaseConfig(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
-  let parsed: { action: string; remaining: string[]; full: boolean; contextFlag?: string };
-  try {
-    parsed = takeSubActionArgs(rawArgs);
-  } catch (e) {
-    if (e instanceof AxiError && e.message === "__HELP__") return DATABASE_HELP;
-    throw e;
-  }
+  const parsed = takeSubActionArgs(rawArgs);
+  if (parsed === null) return DATABASE_HELP;
   const { action, remaining, contextFlag } = parsed;
   if (action === "get" || action === "list" || action === "show") {
     if (remaining.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database config get <db-id>"]);
@@ -343,13 +314,8 @@ async function databaseConfig(rawArgs: string[]): Promise<string> {
 
 async function databaseFirewall(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
-  let parsed: { action: string; remaining: string[]; full: boolean; contextFlag?: string };
-  try {
-    parsed = takeSubActionArgs(rawArgs);
-  } catch (e) {
-    if (e instanceof AxiError && e.message === "__HELP__") return DATABASE_HELP;
-    throw e;
-  }
+  const parsed = takeSubActionArgs(rawArgs);
+  if (parsed === null) return DATABASE_HELP;
   const { action, remaining, contextFlag } = parsed;
   if (action === "list" || action === "get") {
     if (remaining.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database firewall list <db-id>"]);

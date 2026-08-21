@@ -1,10 +1,10 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlDelete, doctlJson } from "../lib/doctl.js";
-import { toSpaceKeyToon } from "../lib/toon.js";
+import { doctlDelete, doctlJson, unwrapArray } from "../lib/doctl.js";
+import { projectFields, toSpaceKeyToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const ALLOWED_FIELDS: Record<string, true> = { name: true, accessKey: true, created: true };
+const ALLOWED_FIELDS = ["name", "accessKey", "created"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -41,9 +41,8 @@ export async function spaceCommand(args: string[], _context: unknown): Promise<s
     ]);
   }
   if (sub === "--help" || sub === "-h") return SPACE_HELP;
-  // normalize: allow "key" or "keys"
-  const normalized = sub === "keys" ? "key" : sub;
-  if (normalized !== "key" && normalized !== "keys") {
+  // accept "key" or "keys"
+  if (sub !== "key" && sub !== "keys") {
     throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
       "Available: key list, key get",
       "Run `doctl-axi space --help`",
@@ -77,30 +76,12 @@ async function spaceKeyList(rawArgs: string[]): Promise<string> {
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key list --help`"]);
-  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key list --help`"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: name,accessKey,created"]);
-    for (const f of requested) if (!(f in ALLOWED_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: name,accessKey,created"]);
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const raw = await doctlJson<unknown>(["spaces", "keys", "list"], contextFlag);
-  const rawArray: unknown[] = Array.isArray(raw)
-    ? raw
-    : raw !== null && typeof raw === "object" && "keys" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).keys)
-      ? ((raw as Record<string, unknown>).keys as unknown[])
-      : [];
+  const rawArray: unknown[] = unwrapArray(raw, "keys");
   if (rawArray.length === 0) return "0 spaces";
   const mapped = rawArray.map((item) => toSpaceKeyToon(item as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     spaces: filtered,

@@ -1,8 +1,8 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
+import { doctlJson, unwrapArray } from "../lib/doctl.js";
 import { projectFields, toDedicatedInferenceToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
 const ALLOWED_FIELDS = ["id", "name", "region", "status"];
 
@@ -46,21 +46,9 @@ async function list(rawArgs: string[]): Promise<string> {
   const leftover = args.filter((a) => a.startsWith("-"));
   if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi dedicated-inference list --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi dedicated-inference list --help`"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,region,status"]);
-    for (const f of requested) if (!ALLOWED_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,status"]);
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const raw = await doctlJson<unknown>(["dedicated-inference", "list"], contextFlag);
-  const rawArray: unknown[] = Array.isArray(raw)
-    ? raw
-    : raw !== null && typeof raw === "object" && "inference" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).inference)
-      ? ((raw as Record<string, unknown>).inference as unknown[])
-      : raw !== null && typeof raw === "object" && "data" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).data)
-        ? ((raw as Record<string, unknown>).data as unknown[])
-        : [];
+  const rawArray: unknown[] = unwrapArray(raw, "inference", "data");
   if (rawArray.length === 0) return "0 inference";
   const mapped = rawArray.map((item) => toDedicatedInferenceToon(item as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);

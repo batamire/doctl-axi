@@ -1,10 +1,10 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
-import { toNfsToon } from "../lib/toon.js";
+import { doctlJson, unwrapArray } from "../lib/doctl.js";
+import { projectFields, toNfsToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, region: true, status: true };
+const ALLOWED_FIELDS = ["id", "name", "region", "status"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -44,32 +44,13 @@ async function nfsList(rawArgs: string[]): Promise<string> {
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi nfs list --help` for available flags"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi nfs list --help`"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,region,status"]);
-    for (const f of requested) if (!(f in ALLOWED_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,status"]);
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   // try primary doctl nfs list, fallback to compute nfs if needed via wrapper? For now use nfs list
   const raw = await doctlJson<unknown>(["nfs", "list"], contextFlag);
-  const rawArray: unknown[] = Array.isArray(raw)
-    ? raw
-    : raw !== null && typeof raw === "object" && "shares" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).shares)
-      ? ((raw as Record<string, unknown>).shares as unknown[])
-      : raw !== null && typeof raw === "object" && "nfs" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).nfs)
-        ? ((raw as Record<string, unknown>).nfs as unknown[])
-        : [];
+  const rawArray: unknown[] = unwrapArray(raw, "shares", "nfs");
   if (rawArray.length === 0) return "0 nfs shares";
   const mapped = rawArray.map((item) => toNfsToon(item as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const totalCount = rawArray.length;
   const available = mapped.filter((d) => d.status === "available").length;
   const payload: Record<string, unknown> = {

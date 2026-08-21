@@ -1,10 +1,10 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
+import { doctlJson, unwrapArray } from "../lib/doctl.js";
 import { toMarketplaceToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const ALLOWED_FIELDS: Record<string, true> = { slug: true, name: true, type: true };
+const ALLOWED_FIELDS = ["slug", "name", "type"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -43,22 +43,10 @@ async function list(rawArgs: string[]): Promise<string> {
   const leftover = args.filter((a) => a.startsWith("-"));
   if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi marketplace list --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi marketplace list --help`"]);
-  let fields: string[] | null = null;
-  if (fieldsArg !== undefined) {
-    const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: slug,name,type"]);
-    for (const f of requested) if (!(f in ALLOWED_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: slug,name,type"]);
-    fields = requested;
-  }
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   // doctl 1-click list may be hyphenated; try primary, fallback wrapper inside doctlJson will error if not found, but we attempt 1-click
   const raw = await doctlJson<unknown>(["1-click", "list"], contextFlag);
-  const rawArray: unknown[] = Array.isArray(raw)
-    ? raw
-    : raw !== null && typeof raw === "object" && "addons" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).addons)
-      ? ((raw as Record<string, unknown>).addons as unknown[])
-      : raw !== null && typeof raw === "object" && "marketplace" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).marketplace)
-        ? ((raw as Record<string, unknown>).marketplace as unknown[])
-        : [];
+  const rawArray: unknown[] = unwrapArray(raw, "addons", "marketplace");
   if (rawArray.length === 0) return "0 marketplace items";
   const mapped = rawArray.map((item) => toMarketplaceToon(item as never, full));
   let filtered: Record<string, unknown>[];
