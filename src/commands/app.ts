@@ -1,11 +1,11 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson, doctlRaw } from "../lib/doctl.js";
-import { toAppToon, toAppDeploymentToon } from "../lib/toon.js";
+import { projectFields, toAppToon, toAppDeploymentToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
 import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const ALLOWED_FIELDS = new Set(["id", "name", "region", "phase", "activeDeployment"]);
-const ALLOWED_FIELDS_DEPLOY = new Set(["id", "phase", "cause", "progress"]);
+const ALLOWED_FIELDS = ["id", "name", "region", "phase", "activeDeployment"];
+const ALLOWED_FIELDS_DEPLOY = ["id", "phase", "cause", "progress"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context", "--spec"];
 
@@ -105,7 +105,7 @@ async function appList(rawArgs: string[]): Promise<string> {
       throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,region,phase,activeDeployment"]);
     }
     for (const f of requested) {
-      if (!ALLOWED_FIELDS.has(f)) {
+      if (!ALLOWED_FIELDS.includes(f)) {
         throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,phase,activeDeployment"]);
       }
     }
@@ -118,16 +118,7 @@ async function appList(rawArgs: string[]): Promise<string> {
 
   const mapped = rawArray.map((item) => toAppToon(item as never, full));
 
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else {
-    filtered = mapped as unknown as Record<string, unknown>[];
-  }
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
 
   const totalCount = rawArray.length;
   const payload: Record<string, unknown> = {
@@ -148,7 +139,7 @@ async function appGet(rawArgs: string[]): Promise<string> {
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
     for (const f of requested) {
-      if (!ALLOWED_FIELDS.has(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,phase,activeDeployment"]);
+      if (!ALLOWED_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,phase,activeDeployment"]);
     }
   }
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app get --help` for available flags");
@@ -161,13 +152,8 @@ async function appGet(rawArgs: string[]): Promise<string> {
   const obj = raw !== null && typeof raw === "object" && "app" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).app : raw;
   const mapped = toAppToon(obj as never, full);
   // if fields requested filter single
-  let out: Record<string, unknown> = mapped as unknown as Record<string, unknown>;
-  if (fieldsArg !== undefined) {
-    const fields = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    const filtered: Record<string, unknown> = {};
-    for (const f of fields) filtered[f] = (mapped as Record<string, unknown>)[f];
-    out = filtered;
-  }
+  const requested = fieldsArg !== undefined ? fieldsArg.split(",").map((s) => s.trim()).filter(Boolean) : null;
+  const out = projectFields([mapped as unknown as Record<string, unknown>], requested)[0];
   return encode({ app: out, help: ["doctl-axi app list for overview", "doctl-axi app logs <id> for logs"] });
 }
 
@@ -233,7 +219,7 @@ async function appListDeployments(rawArgs: string[]): Promise<string> {
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    for (const f of req) if (!ALLOWED_FIELDS_DEPLOY.has(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,phase,cause,progress"]);
+    for (const f of req) if (!ALLOWED_FIELDS_DEPLOY.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,phase,cause,progress"]);
     fields = req;
   }
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
@@ -245,14 +231,7 @@ async function appListDeployments(rawArgs: string[]): Promise<string> {
   const rawArray: unknown[] = Array.isArray(raw) ? raw : raw !== null && typeof raw === "object" && "deployments" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).deployments) ? ((raw as Record<string, unknown>).deployments as unknown[]) : [];
   if (rawArray.length === 0) return "0 deployments";
   const mapped = rawArray.map((it) => toAppDeploymentToon(it as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({ count: `${mapped.length} of ${mapped.length} total`, deployments: filtered, help: [`app get-deployment ${id} ${mapped[0].id} for detail`] });
 }
 

@@ -1,10 +1,10 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlJson } from "../lib/doctl.js";
-import { toDedicatedInferenceToon } from "../lib/toon.js";
+import { projectFields, toDedicatedInferenceToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
 import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, region: true, status: true };
+const ALLOWED_FIELDS = ["id", "name", "region", "status"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -50,7 +50,7 @@ async function list(rawArgs: string[]): Promise<string> {
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
     if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,region,status"]);
-    for (const f of requested) if (!(f in ALLOWED_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,status"]);
+    for (const f of requested) if (!ALLOWED_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,status"]);
     fields = requested;
   }
   const raw = await doctlJson<unknown>(["dedicated-inference", "list"], contextFlag);
@@ -63,14 +63,7 @@ async function list(rawArgs: string[]): Promise<string> {
         : [];
   if (rawArray.length === 0) return "0 inference";
   const mapped = rawArray.map((item) => toDedicatedInferenceToon(item as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     status: `active ${mapped.filter((d) => d.status === "active").length}/${mapped.length}`,

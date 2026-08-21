@@ -1,6 +1,6 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson } from "../lib/doctl.js";
-import { toDropletDetailToon, toDropletToon, type DropletDetailRaw, type DropletRaw } from "../lib/toon.js";
+import { projectFields, toDropletDetailToon, toDropletToon, type DropletDetailRaw, type DropletRaw } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
 import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
@@ -38,7 +38,6 @@ const SUBCOMMANDS: Record<string, string> = {
   get: "Get a Droplet by id",
   create: "Create a Droplet",
   delete: "Delete a Droplet",
-  actions: "Run a droplet action (reboot|power-cycle|resize|snapshot|rebuild) on a Droplet",
 };
 
 const AVAILABLE = Object.keys(SUBCOMMANDS).join(", ");
@@ -77,7 +76,6 @@ export async function dropletCommand(args: string[], _context: unknown): Promise
   if (sub === "get") return dropletGet(args.slice(1));
   if (sub === "create") return dropletCreate(args.slice(1));
   if (sub === "delete") return dropletDelete(args.slice(1));
-  if (sub === "actions") return dropletAction(args.slice(1));
   if (sub in DROPLET_ACTIONS) return dropletAction(args);
   throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
     `Available: ${AVAILABLE}`,
@@ -147,17 +145,7 @@ async function dropletList(rawArgs: string[]): Promise<string> {
     return toDropletToon(rec as never, full);
   });
 
-  // Filter fields if requested
-  let filteredForEncode: Record<string, unknown>[];
-  if (fields) {
-    filteredForEncode = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else {
-    filteredForEncode = mapped as unknown as Record<string, unknown>[];
-  }
+  const filteredForEncode = projectFields(mapped as unknown as Record<string, unknown>[], fields);
 
   const totalCount = rawArray.length;
   const active = mapped.filter((d) => d.status === "active").length;
@@ -195,12 +183,7 @@ async function dropletGet(rawArgs: string[]): Promise<string> {
   const raw = await doctlJson<unknown>(["compute", "droplet", "get", id], contextFlag);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
   const mapped = toDropletDetailToon(rec as unknown as DropletDetailRaw, full);
-  let filtered: Record<string, unknown> = mapped as unknown as Record<string, unknown>;
-  if (fields) {
-    const obj: Record<string, unknown> = {};
-    for (const f of fields) obj[f] = (mapped as unknown as Record<string, unknown>)[f];
-    filtered = obj;
-  }
+  const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
   return encode({ droplet: filtered, help: ["doctl-axi droplet list"] });
 }
 

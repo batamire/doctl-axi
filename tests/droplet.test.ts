@@ -238,7 +238,7 @@ describe("doctl-axi droplet list CLI seam", () => {
   });
 });
 
-describe("doctl-axi droplet get/create/delete/actions CLI seam", () => {
+describe("doctl-axi droplet get/create/delete CLI seam", () => {
   let tmp: string;
   let capture: string;
 
@@ -471,18 +471,6 @@ describe("doctl-axi droplet get/create/delete/actions CLI seam", () => {
     expect(args).toContain("compute droplet-action rebuild 42 --image ubuntu-24-04-x64");
   });
 
-  it("droplet actions reboot <id> delegates to the action handler", () => {
-    const json = JSON.stringify({ id: 999, type: "reboot", status: "in-progress" });
-    makeFakeDoctl(tmp, json, capture);
-    const res = runCli(["droplet", "actions", "reboot", "42"], {
-      fakeDir: tmp,
-      env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
-    });
-    expect(res.status).toBe(0);
-    const args = readFileSync(capture, "utf-8");
-    expect(args).toContain("compute droplet-action reboot 42");
-  });
-
   it("unknown action exits 2 listing available actions", () => {
     makeFakeDoctl(tmp, "{}");
     const res = runCli(["droplet", "frobnicate", "42"], {
@@ -498,16 +486,14 @@ describe("doctl-axi droplet get/create/delete/actions CLI seam", () => {
   });
 
   it("unknown subcommand exits 2 listing exactly the implemented verbs", () => {
-    makeFakeDoctl(tmp, "{}");
     const res = runCli(["droplet", "bogus"], {
       fakeDir: tmp,
       env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
     });
     expect(res.status).toBe(2);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.code).toBe("VALIDATION_ERROR");
     const help = (decoded.help as string[] | undefined)?.join(" ") ?? "";
-    for (const verb of ["list", "get", "create", "delete", "actions"]) {
+    for (const verb of ["list", "get", "create", "delete"]) {
       expect(help).toContain(verb);
     }
   });

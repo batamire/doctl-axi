@@ -1,10 +1,10 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlJson } from "../lib/doctl.js";
-import { toInsightToon } from "../lib/toon.js";
+import { projectFields, toInsightToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
 import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
-const ALLOWED_FIELDS: Record<string, true> = { id: true, name: true, status: true, target: true };
+const ALLOWED_FIELDS = ["id", "name", "status", "target"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
@@ -57,7 +57,7 @@ async function uptimeList(rawArgs: string[]): Promise<string> {
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
     if (requested.length === 0) throw new AxiError("Invalid --fields: empty", "VALIDATION_ERROR", ["Available: id,name,status,target"]);
-    for (const f of requested) if (!(f in ALLOWED_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,status,target"]);
+    for (const f of requested) if (!ALLOWED_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,status,target"]);
     fields = requested;
   }
   const raw = await doctlJson<unknown>(["monitoring", "uptime", "list"], contextFlag);
@@ -70,14 +70,7 @@ async function uptimeList(rawArgs: string[]): Promise<string> {
         : [];
   if (rawArray.length === 0) return "0 uptime checks";
   const mapped = rawArray.map((item) => toInsightToon(item as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     checks: filtered,

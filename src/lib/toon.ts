@@ -9,6 +9,17 @@ export function truncateField(value: string, full: boolean): string {
   return `${value.slice(0, TRUNCATION_LIMIT)}... [truncated ${truncated} chars, use --full]`;
 }
 
+// Project each row onto the requested fields, preserving the requested order.
+// `fields === null` means no --fields was given: rows pass through untouched.
+export function projectFields<T extends Record<string, unknown>>(rows: T[], fields: string[] | null): T[] {
+  if (!fields) return rows;
+  return rows.map((row) => {
+    const obj: Record<string, unknown> = {};
+    for (const f of fields) obj[f] = row[f];
+    return obj as T;
+  });
+}
+
 // Single shared path-extraction helper. Walks `path` through nested objects;
 // a string encountered at any level is terminal; an object at the end of the
 // path yields its `slug` when that is a string. Replaces the per-noun
