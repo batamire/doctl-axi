@@ -66,6 +66,35 @@ export function toDropletToon(raw: DropletRaw, full: boolean): DropletToon {
   return out;
 }
 
+export type DropletDetailRaw = DropletRaw & {
+  memory?: number | string;
+  vcpus?: number | string;
+  disk?: number | string;
+};
+
+export type DropletDetailToon = DropletToon & {
+  memory: string;
+  vcpus: string;
+  disk: string;
+};
+
+function extractResourceCount(raw: Record<string, unknown>, key: string): string {
+  const v = raw[key];
+  if (typeof v === "number") return String(v);
+  if (typeof v === "string" && v.length > 0) return v;
+  return "";
+}
+
+export function toDropletDetailToon(raw: DropletDetailRaw, full: boolean): DropletDetailToon {
+  const base = toDropletToon(raw, full);
+  return {
+    ...base,
+    memory: truncateField(extractResourceCount(raw, "memory"), full),
+    vcpus: truncateField(extractResourceCount(raw, "vcpus"), full),
+    disk: truncateField(extractResourceCount(raw, "disk"), full),
+  };
+}
+
 export function filterFields(
   droplets: DropletToon[],
   fields: string[] | null,
