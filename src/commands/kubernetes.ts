@@ -306,7 +306,7 @@ async function kubernetesClusterKubeconfig(rawArgs: string[]): Promise<string> {
         throw new AxiError(detail, "UNKNOWN", []);
       }
     } catch {}
-    throw mapDoctlError(combined || `doctl exited with code ${result.exitCode}`, result.exitCode);
+    throw mapDoctlError(combined || `doctl exited with code ${result.exitCode}`);
   }
   // Try JSON parse
   let parsed: unknown = null;

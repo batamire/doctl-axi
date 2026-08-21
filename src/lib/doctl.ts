@@ -71,14 +71,14 @@ function resolveToken(contextFlag: string | undefined): string | undefined {
   return undefined;
 }
 
-export function mapDoctlError(detail: string, _exitCode: number): AxiError {
+export function mapDoctlError(detail: string): AxiError {
   const lower = detail.toLowerCase();
-  if (lower.includes("access token is required") || lower.includes("unable to initialize digitalocean api client")) {
-    return new AxiError(detail, "AUTH_MISSING", [
-      "export DIGITALOCEAN_ACCESS_TOKEN=... or run: doctl auth init",
-    ]);
-  }
-  if (lower.includes("unable to authenticate") || lower.includes("401")) {
+  if (
+    lower.includes("access token is required") ||
+    lower.includes("unable to initialize digitalocean api client") ||
+    lower.includes("unable to authenticate") ||
+    lower.includes("401")
+  ) {
     return new AxiError(detail, "AUTH_MISSING", [
       "export DIGITALOCEAN_ACCESS_TOKEN=... or run: doctl auth init",
     ]);
@@ -157,13 +157,13 @@ export async function doctlJson<T>(baseArgs: string[], contextFlag?: string): Pr
 
   const detail = parsed !== null ? parseDetailFromErrors(parsed) : null;
   if (detail !== null) {
-    throw mapDoctlError(detail, result.exitCode);
+    throw mapDoctlError(detail);
   }
 
   // If exitCode !=0 but no errors field, treat as error
   if (result.exitCode !== 0) {
     const msg = combined.length > 0 ? combined : `doctl exited with code ${result.exitCode}`;
-    throw mapDoctlError(msg, result.exitCode);
+    throw mapDoctlError(msg);
   }
 
   if (parsed === null) {

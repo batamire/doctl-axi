@@ -95,59 +95,6 @@ export function toDropletDetailToon(raw: DropletDetailRaw, full: boolean): Dropl
   };
 }
 
-export function filterFields(
-  droplets: DropletToon[],
-  fields: string[] | null,
-): Record<string, unknown>[] {
-  if (!fields || fields.length === 0) return droplets as unknown as Record<string, unknown>[];
-  const allowed = new Set(fields.map((f) => f.trim()).filter(Boolean));
-  return droplets.map((d) => {
-    const obj: Record<string, unknown> = {};
-    for (const key of Object.keys(d) as Array<keyof DropletToon>) {
-      if (allowed.has(key)) obj[key] = d[key];
-    }
-    return obj;
-  });
-}
-
-export function encodeDropletList(
-  droplets: DropletToon[],
-  opts: { totalCount: number; fields: string[] | null; full: boolean },
-): string {
-  const filtered = filterFields(droplets, opts.fields);
-  // Build aggregates
-  const countLine = `count: ${droplets.length} of ${opts.totalCount} total`;
-  const active = droplets.filter((d) => d.status === "active").length;
-  const statusLine = `status: active ${active}/${droplets.length}`;
-
-  // Determine help suggestions
-  const help: string[] = [];
-  if (droplets.length > 0) {
-    const firstId = droplets[0].id;
-    help.push(`droplet get ${firstId} for detail`);
-    help.push(`doctl-axi droplet list --full for complete fields`);
-  }
-
-  // Use encode with tabular array
-  // Determine keys for droplets tabular header based on fields or defaults
-  const payload: Record<string, unknown> = {
-    count: `${droplets.length} of ${opts.totalCount} total`,
-    status: `active ${active}/${droplets.length}`,
-    droplets: filtered,
-    help,
-  };
-
-  // If filtered is empty due to --fields, keep structure but with limited keys
-  // encode will produce TOON tabular form automatically
-  return encode(payload);
-}
-
-export function encodeErrorToon(message: string, code: string, help: string[]): string {
-  const obj: Record<string, unknown> = { error: message, code };
-  if (help.length > 0) obj.help = help;
-  return encode(obj);
-}
-
 // ---- Volume ----
 
 export type VolumeRaw = {
