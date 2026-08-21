@@ -1,4 +1,4 @@
-# Prototype: TOON samples for do-axi (ticket 07)
+# Prototype: TOON samples for doctl-axi (ticket 07)
 
 Chosen: 4 fields + aggregates. Mirrors gh-axi pattern: src/toon.ts FieldDef DSL + src/format.ts aggregates.
 
@@ -17,7 +17,7 @@ status: active 2/2
   region: ams3
   status: active
   size: s-2vcpu-4gb
-help: ["droplet get 12345678 for detail", "do-axi droplet list --full for complete fields"]
+help: ["droplet get 12345678 for detail", "doctl-axi droplet list --full for complete fields"]
 ```
 
 ## app list (TOON)
