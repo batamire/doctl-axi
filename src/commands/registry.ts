@@ -10,9 +10,9 @@ import {
 import { encode } from "@toon-format/toon";
 import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 const ALLOWED_REPO_FIELDS = ["name", "registry", "tagCount", "manifestCount"];
-const ALLOWED_TAG_FIELDS: Record<string, true> = { repository: true, tag: true, digest: true, updatedAt: true };
-const ALLOWED_MANIFEST_FIELDS: Record<string, true> = { repository: true, digest: true, tags: true, size: true };
-const ALLOWED_GC_FIELDS: Record<string, true> = { id: true, registry: true, status: true, blobsDeleted: true };
+const ALLOWED_TAG_FIELDS = ["repository", "tag", "digest", "updatedAt"];
+const ALLOWED_MANIFEST_FIELDS = ["repository", "digest", "tags", "size"];
+const ALLOWED_GC_FIELDS = ["id", "registry", "status", "blobsDeleted"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context", "--registry"];
 
@@ -148,7 +148,7 @@ async function registryTagList(rawArgs: string[]): Promise<string> {
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    for (const f of req) if (!(f in ALLOWED_TAG_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: repository,tag,digest,updatedAt"]);
+    for (const f of req) if (!ALLOWED_TAG_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: repository,tag,digest,updatedAt"]);
     fields = req;
   }
   const repo = args[0];
@@ -213,7 +213,7 @@ async function registryManifestList(rawArgs: string[]): Promise<string> {
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    for (const f of req) if (!(f in ALLOWED_MANIFEST_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: repository,digest,tags,size"]);
+    for (const f of req) if (!ALLOWED_MANIFEST_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: repository,digest,tags,size"]);
     fields = req;
   }
   const repo = args[0];
@@ -244,7 +244,7 @@ async function registryGCList(rawArgs: string[]): Promise<string> {
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
-    for (const f of req) if (!(f in ALLOWED_GC_FIELDS)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,registry,status,blobsDeleted"]);
+    for (const f of req) if (!ALLOWED_GC_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,registry,status,blobsDeleted"]);
     fields = req;
   }
   const registryName = args[0];

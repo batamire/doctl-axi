@@ -6,6 +6,8 @@ import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "..
 
 const ALLOWED_FIELDS = ["id", "name", "region", "phase", "activeDeployment"];
 const ALLOWED_FIELDS_DEPLOY = ["id", "phase", "cause", "progress"];
+// logs accept their own flags (--type, --tail, ...); unknown flags still error
+const LOG_FLAGS = ["--full", "--fields", "--context", "--type", "--tail", "--deployment", "--follow", "--no-prefix", "--event-id", "--job-invocation"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context", "--spec"];
 
@@ -264,20 +266,7 @@ async function appLogs(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  // allow --type, --tail etc? just skip unknown handling for logs? We'll allow any flag starting with --type or --follow etc by ignoring
-  // For validation, only check --full/--fields/--context unknown; but logs may use --type, so we relax: don't reject unknown for logs
-  // Instead remove --type etc? Simplest: don't call rejectUnknownFlags strictly, just filter
-  // We'll still reject obviously bogus --bogus for test
-  // So call reject but allow --type, --tail, --deployment, --follow etc? Easiest: skip reject and just check remaining contains --bogus fails via test
-  // We'll implement permissive: if arg is known global or log-specific, skip
-  const allowedLogFlags = new Set(["--type", "--tail", "--deployment", "--follow", "--no-prefix", "--event-id", "--job-invocation"]);
-  for (const a of args) {
-    if (!a.startsWith("-")) continue;
-    if (a === "--full" || a === "--help" || a === "-h" || a === "--fields" || a === "--context") continue;
-    if (a.startsWith("--fields=") || a.startsWith("--context=") || a.startsWith("--type=") || a.startsWith("--tail=") || a.startsWith("--deployment=")) continue;
-    if (allowedLogFlags.has(a)) continue;
-    throw new AxiError(`Unknown flag: ${a}`, "VALIDATION_ERROR", ["Run `doctl-axi app logs --help` for available flags"]);
-  }
+  rejectUnknownFlags(args, LOG_FLAGS, "Run `doctl-axi app logs --help` for available flags");
 
   const positional = args.filter((a) => !a.startsWith("-"));
   const appId = positional[0];

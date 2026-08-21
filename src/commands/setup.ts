@@ -18,6 +18,8 @@ export const SETUP_HELP = encode({
   examples: ["doctl-axi setup hooks", "doctl-axi setup hooks --check"],
 });
 
+const MARKER = "doctl-axi";
+
 function hasMarkerInFile(path: string, marker: string): boolean {
   try {
     if (!existsSync(path)) return false;
@@ -28,16 +30,16 @@ function hasMarkerInFile(path: string, marker: string): boolean {
   }
 }
 
-function checkHooksDrift(marker = "doctl-axi"): { drift: boolean; details: Record<string, unknown> } {
+function checkHooksDrift(): { drift: boolean; details: Record<string, unknown> } {
   const home = homedir();
   const claudeSettings = join(home, ".claude", "settings.json");
   const codexHooks = join(home, ".codex", "hooks.json");
-  const opencodePlugin = join(home, ".config", "opencode", "plugins", `axi-${marker}.js`);
+  const opencodePlugin = join(home, ".config", "opencode", "plugins", `axi-${MARKER}.js`);
   const codexConfig = join(home, ".codex", "config.toml");
 
-  const claudeOk = hasMarkerInFile(claudeSettings, marker);
-  const codexOk = hasMarkerInFile(codexHooks, marker);
-  const opencodeOk = hasMarkerInFile(opencodePlugin, marker);
+  const claudeOk = hasMarkerInFile(claudeSettings, MARKER);
+  const codexOk = hasMarkerInFile(codexHooks, MARKER);
+  const opencodeOk = hasMarkerInFile(opencodePlugin, MARKER);
   // codex config should contain hooks = true when hooks installed
   let codexConfigOk = true;
   try {
@@ -106,7 +108,7 @@ export async function setupCommand(args: string[], _context: unknown): Promise<s
   }
   const check = rest.includes("--check");
   if (check) {
-    const { drift, details } = checkHooksDrift("doctl-axi");
+    const { drift, details } = checkHooksDrift();
     return hookStatusPayload(drift, details);
   }
 
@@ -122,6 +124,6 @@ export async function setupCommand(args: string[], _context: unknown): Promise<s
   }
 
   // after install, verify — if still drift (e.g., execPath ends with .ts via tsx), report DRIFT not OK
-  const { drift: driftAfter, details: detailsAfter } = checkHooksDrift("doctl-axi");
+  const { drift: driftAfter, details: detailsAfter } = checkHooksDrift();
   return hookStatusPayload(driftAfter, detailsAfter);
 }

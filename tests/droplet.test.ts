@@ -5,54 +5,11 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { decode } from "@toon-format/toon";
 import { createRequire } from "node:module";
+import { BIN, makeFakeDoctl, makeFakeDoctlWithExit, runCli } from "./helpers.js";
 
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
-const BIN = "./dist/bin/doctl-axi.js";
-
-function makeFakeDoctl(dir: string, json: string, captureFile?: string) {
-  const script = join(dir, "doctl");
-  const cap = captureFile ? `echo "$@" > "${captureFile}"\n` : "";
-  writeFileSync(
-    script,
-    `#!/usr/bin/env bash\n${cap}cat <<'JSON'\n${json}\nJSON\n`,
-  );
-  chmodSync(script, 0o755);
-  return script;
-}
-
-function makeFakeDoctlWithExit(dir: string, json: string, exitCode: number) {
-  const script = join(dir, "doctl");
-  writeFileSync(
-    script,
-    `#!/usr/bin/env bash\ncat <<'JSON'\n${json}\nJSON\nexit ${exitCode}\n`,
-  );
-  chmodSync(script, 0o755);
-}
-
-function runCli(
-  args: string[],
-  opts: { env?: Record<string, string | undefined>; fakeDir?: string; stdin?: string } = {},
-) {
-  const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  if (opts.env) {
-    for (const [k, v] of Object.entries(opts.env)) {
-      if (v === undefined) delete env[k];
-      else env[k] = v;
-    }
-  }
-  if (opts.fakeDir) {
-    env.PATH = `${opts.fakeDir}:${env.PATH}`;
-  }
-  const result = spawnSync("node", [BIN, ...args], {
-    env,
-    input: opts.stdin,
-    encoding: "utf-8",
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  return result;
-}
 
 describe("doctl-axi droplet list CLI seam", () => {
   let tmp: string;

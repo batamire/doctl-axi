@@ -71,11 +71,7 @@ async function volumeList(rawArgs: string[]): Promise<string> {
   const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
 
   const raw = await doctlJson<unknown>(["compute", "volume", "list"], contextFlag);
-  const rawArray: unknown[] = Array.isArray(raw)
-    ? raw
-    : raw !== null && typeof raw === "object" && "volumes" in (raw as Record<string, unknown>) && Array.isArray((raw as Record<string, unknown>).volumes)
-      ? ((raw as Record<string, unknown>).volumes as unknown[])
-      : [];
+  const rawArray: unknown[] = unwrapArray(raw, "volumes");
 
   if (rawArray.length === 0) return "0 volumes";
 

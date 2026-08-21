@@ -1,6 +1,6 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlJson, unwrapArray } from "../lib/doctl.js";
-import { toMarketplaceToon } from "../lib/toon.js";
+import { projectFields, toMarketplaceToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
 import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
 
@@ -49,14 +49,7 @@ async function list(rawArgs: string[]): Promise<string> {
   const rawArray: unknown[] = unwrapArray(raw, "addons", "marketplace");
   if (rawArray.length === 0) return "0 marketplace items";
   const mapped = rawArray.map((item) => toMarketplaceToon(item as never, full));
-  let filtered: Record<string, unknown>[];
-  if (fields) {
-    filtered = mapped.map((d) => {
-      const obj: Record<string, unknown> = {};
-      for (const f of fields!) obj[f] = (d as Record<string, unknown>)[f];
-      return obj;
-    });
-  } else filtered = mapped as unknown as Record<string, unknown>[];
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
     count: `${mapped.length} of ${rawArray.length} total`,
     marketplace: filtered,

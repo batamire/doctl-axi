@@ -1,11 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, chmodSync, rmSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { decode } from "@toon-format/toon";
-
-const BIN = "./dist/bin/doctl-axi.js";
+import { runCli } from "./helpers.js";
 
 const NOT_FOUND_JSON = JSON.stringify({ errors: [{ detail: "resource not found" }] });
 
@@ -39,20 +37,6 @@ function makeFakeDoctlDeleteTwice(dir: string) {
     ].join("\n"),
   );
   chmodSync(script, 0o755);
-}
-
-function runCli(args: string[], opts: { env?: Record<string, string | undefined>; fakeDir?: string } = {}) {
-  const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  if (opts.env) {
-    for (const [k, v] of Object.entries(opts.env)) {
-      if (v === undefined) delete env[k];
-      else env[k] = v;
-    }
-  }
-  if (opts.fakeDir) {
-    env.PATH = `${opts.fakeDir}:${env.PATH}`;
-  }
-  return spawnSync("node", [BIN, ...args], { encoding: "utf-8", env });
 }
 
 describe("doctl-axi idempotent deletes CLI seam", () => {

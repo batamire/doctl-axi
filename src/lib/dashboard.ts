@@ -6,38 +6,30 @@ type AccountRaw = { account?: Record<string, unknown>; email?: string; [k: strin
 type BalanceRaw = { balance?: Record<string, unknown>; account_balance?: string; accountBalance?: string; month_to_date_balance?: string; monthToDateBalance?: string; [k: string]: unknown };
 
 function extractAccount(raw: unknown): { email: string; team: string } {
-  try {
-    const obj = raw as AccountRaw;
-    const acct = (obj?.account as Record<string, unknown>) ?? (obj as Record<string, unknown>);
-    const email = typeof acct?.email === "string" ? acct.email : typeof obj?.email === "string" ? obj.email : PLACEHOLDER;
-    // team: try team field, else droplet_limit etc? fallback to email domain or placeholder
-    const teamRaw = (acct as Record<string, unknown>)?.team ?? (acct as Record<string, unknown>)?.name ?? (obj as Record<string, unknown>)?.team;
-    const team = typeof teamRaw === "string" && teamRaw.length > 0 ? teamRaw : PLACEHOLDER;
-    return { email: email || PLACEHOLDER, team: team || PLACEHOLDER };
-  } catch {
-    return { email: PLACEHOLDER, team: PLACEHOLDER };
-  }
+  const obj = raw as AccountRaw;
+  const acct = (obj?.account as Record<string, unknown>) ?? (obj as Record<string, unknown>);
+  const email = typeof acct?.email === "string" ? acct.email : typeof obj?.email === "string" ? obj.email : PLACEHOLDER;
+  // team: try team field, else droplet_limit etc? fallback to email domain or placeholder
+  const teamRaw = (acct as Record<string, unknown>)?.team ?? (acct as Record<string, unknown>)?.name ?? (obj as Record<string, unknown>)?.team;
+  const team = typeof teamRaw === "string" && teamRaw.length > 0 ? teamRaw : PLACEHOLDER;
+  return { email: email || PLACEHOLDER, team: team || PLACEHOLDER };
 }
 
 function extractBalance(raw: unknown): string {
-  try {
-    const obj = raw as BalanceRaw;
-    const bal = (obj?.balance as Record<string, unknown>) ?? (obj as Record<string, unknown>);
-    const v =
-      (bal as Record<string, unknown>)?.account_balance ??
-      (bal as Record<string, unknown>)?.accountBalance ??
-      (obj as Record<string, unknown>)?.account_balance ??
-      (obj as Record<string, unknown>)?.accountBalance ??
-      (bal as Record<string, unknown>)?.month_to_date_balance ??
-      (bal as Record<string, unknown>)?.monthToDateBalance;
-    if (typeof v === "string" && v.length > 0) return v;
-    if (typeof v === "number") return String(v);
-    // if raw is string itself
-    if (typeof raw === "string" && raw.length > 0) return raw;
-    return PLACEHOLDER;
-  } catch {
-    return PLACEHOLDER;
-  }
+  const obj = raw as BalanceRaw;
+  const bal = (obj?.balance as Record<string, unknown>) ?? (obj as Record<string, unknown>);
+  const v =
+    (bal as Record<string, unknown>)?.account_balance ??
+    (bal as Record<string, unknown>)?.accountBalance ??
+    (obj as Record<string, unknown>)?.account_balance ??
+    (obj as Record<string, unknown>)?.accountBalance ??
+    (bal as Record<string, unknown>)?.month_to_date_balance ??
+    (bal as Record<string, unknown>)?.monthToDateBalance;
+  if (typeof v === "string" && v.length > 0) return v;
+  if (typeof v === "number") return String(v);
+  // if raw is string itself
+  if (typeof raw === "string" && raw.length > 0) return raw;
+  return PLACEHOLDER;
 }
 
 function countFromArray(raw: unknown): number | string {

@@ -1,32 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, chmodSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { decode } from "@toon-format/toon";
+import { runCli } from "./helpers.js";
 
-const BIN = "./dist/bin/doctl-axi.js";
-
-function runCli(args: string[], opts: { env?: Record<string, string | undefined>; fakeDir?: string; homeDir?: string } = {}) {
-  const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  if (opts.env) {
-    for (const [k, v] of Object.entries(opts.env)) {
-      if (v === undefined) delete env[k];
-      else env[k] = v;
-    }
-  }
-  if (opts.fakeDir) env.PATH = `${opts.fakeDir}:${env.PATH}`;
-  if (opts.homeDir) {
-    env.HOME = opts.homeDir;
-    // also override USERPROFILE for windows compat, but HOME is what homedir() uses via os
-  }
-  const result = spawnSync("node", [BIN, ...args], {
-    env,
-    encoding: "utf-8",
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  return result;
-}
 
 function makeDashboardFakeDoctl(dir: string, opts: { failDroplet?: boolean } = {}) {
   const script = join(dir, "doctl");

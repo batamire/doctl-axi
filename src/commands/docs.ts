@@ -54,74 +54,57 @@ const SUBCOMMANDS = new Set([
   "get-related",
 ]);
 
-const PER_SUB_HELP: Record<string, string> = {
-  search: encode({
-    command: "docs search",
+// Per-subcommand help, generated from a {usage, description, examples} table
+// so every sub help block documents the same flags.
+const PER_SUB_TABLE: Record<string, { usage: string; description: string; examples: string[] }> = {
+  search: {
     usage: "doctl-axi docs search <query> [--full] [--fields path,title,excerpt]",
     description: "Search DigitalOcean docs via llms.txt",
-    flags: {
-      "--full": "Disable truncation",
-      "--fields": "Comma-separated fields to display",
-      "--help": "Show help",
-    },
     examples: ['doctl-axi docs search "droplet resize"', "doctl-axi docs search droplets --full"],
-  }),
-  get: encode({
-    command: "docs get",
+  },
+  get: {
     usage: "doctl-axi docs get <path> [--full] [--fields path,excerpt]",
     description: "Fetch a docs page as markdown excerpt",
-    flags: {
-      "--full": "Disable truncation",
-      "--fields": "Comma-separated fields to display",
-      "--help": "Show help",
-    },
     examples: ["doctl-axi docs get /products/droplets/how-to/resize/", "doctl-axi docs get /products/droplets/how-to/resize --full"],
-  }),
-  "find-for-service": encode({
-    command: "docs find-for-service",
+  },
+  "find-for-service": {
     usage: "doctl-axi docs find-for-service <service> [--full] [--fields path,title,excerpt]",
     description: "Find docs for a DigitalOcean service",
-    flags: {
-      "--full": "Disable truncation",
-      "--fields": "Comma-separated fields to display",
-      "--help": "Show help",
-    },
     examples: ["doctl-axi docs find-for-service app-platform"],
-  }),
-  "get-quickstart": encode({
-    command: "docs get-quickstart",
+  },
+  "get-quickstart": {
     usage: "doctl-axi docs get-quickstart <path> [--full] [--fields path,excerpt]",
     description: "Fetch quickstart guide for a docs path",
-    flags: {
-      "--full": "Disable truncation",
-      "--fields": "Comma-separated fields to display",
-      "--help": "Show help",
-    },
     examples: ["doctl-axi docs get-quickstart /products/droplets/"],
-  }),
-  troubleshoot: encode({
-    command: "docs troubleshoot",
+  },
+  troubleshoot: {
     usage: "doctl-axi docs troubleshoot <path> [--full] [--fields path,excerpt]",
     description: "Fetch troubleshooting guide for a docs path",
-    flags: {
-      "--full": "Disable truncation",
-      "--fields": "Comma-separated fields to display",
-      "--help": "Show help",
-    },
     examples: ["doctl-axi docs troubleshoot /products/droplets/how-to/resize/"],
-  }),
-  "get-related": encode({
-    command: "docs get-related",
+  },
+  "get-related": {
     usage: "doctl-axi docs get-related <path> [--full] [--fields path,title,excerpt]",
     description: "Find related docs for a path",
-    flags: {
-      "--full": "Disable truncation",
-      "--fields": "Comma-separated fields to display",
-      "--help": "Show help",
-    },
     examples: ["doctl-axi docs get-related /products/droplets/how-to/resize/"],
-  }),
+  },
 };
+
+const PER_SUB_HELP: Record<string, string> = Object.fromEntries(
+  Object.entries(PER_SUB_TABLE).map(([sub, t]) => [
+    sub,
+    encode({
+      command: `docs ${sub}`,
+      usage: t.usage,
+      description: t.description,
+      flags: {
+        "--full": "Disable truncation",
+        "--fields": "Comma-separated fields to display",
+        "--help": "Show help",
+      },
+      examples: t.examples,
+    }),
+  ]),
+);
 
 export async function docsCommand(args: string[], _context: unknown): Promise<string> {
   if (args.length === 0 || args.includes("--help") && args.length === 1 || args[0] === "-h" && args.length === 1) {
@@ -182,20 +165,31 @@ export async function docsCommand(args: string[], _context: unknown): Promise<st
   }
 }
 
-async function handleSearch(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
-  const allowed = ["path", "title", "excerpt"];
-  const fields = parseFields(fieldsArg, allowed);
+// Shared implementation of the three search-like doc handlers (search,
+// find-for-service, get-related): parse --fields, derive a query from the
+// positional args, run the llms.txt search, truncate, project onto the
+// requested fields, and append handler-specific help hints.
+type SearchLikeOpts = {
+  /** Name of the required positional argument in error messages. */
+  argName: string;
+  /** Usage hint attached to the missing-argument error. */
+  missingUsage: string;
+  /** Search query derived from the positional args. */
+  queryOf: (args: string[]) => string;
+  /** `docs search` additionally rejects a whitespace-only query. */
+  rejectEmptyQuery?: boolean;
+  /** Handler-specific help hints; `firstPath` is undefined on zero results. */
+  help: (ctx: { query: string; args: string[]; firstPath: string | undefined; firstFilteredPath: unknown }) => string[];
+};
+
+async function searchLikeDocs(args: string[], full: boolean, fieldsArg: string | undefined, opts: SearchLikeOpts): Promise<string> {
+  const fields = parseFields(fieldsArg, ["path", "title", "excerpt"]);
   if (args.length === 0) {
-    throw new AxiError("Missing required argument: <query>", "VALIDATION_ERROR", [
-      "Usage: doctl-axi docs search <query> [--full] [--fields path,title,excerpt]",
-    ]);
+    throw new AxiError(`Missing required argument: <${opts.argName}>`, "VALIDATION_ERROR", [opts.missingUsage]);
   }
-  if (args.length > 1) {
-    // join with space to allow multi-word queries passed as separate args
-  }
-  const query = args.join(" ").trim();
-  if (!query) {
-    throw new AxiError("Missing required argument: <query>", "VALIDATION_ERROR", []);
+  const query = opts.queryOf(args);
+  if (opts.rejectEmptyQuery && !query) {
+    throw new AxiError(`Missing required argument: <${opts.argName}>`, "VALIDATION_ERROR", []);
   }
   const results = await searchDocs(query, full);
   // apply truncation uniformly with the 8k policy
@@ -208,21 +202,39 @@ async function handleSearch(args: string[], full: boolean, fieldsArg: string | u
     return encode({
       count: `0 results for "${query}"`,
       results: [],
-      help: [`docs search "${query}" --full for complete excerpts`, `docs get /path for full page`],
+      help: opts.help({ query, args, firstPath: undefined, firstFilteredPath: undefined }),
     });
   }
   const filtered = applyFieldsFilter(mapped as unknown as Record<string, unknown>[], fields);
-  const countLine = `${mapped.length} results for "${query}"`;
-  const help = [`docs get ${mapped[0]!.path} for full page`, `docs search "${query}" --full`];
-  // add generic next steps
-  help.push("docs find-for-service <service> for service docs");
-  help.push("docs get-related /path for related pages");
-  const payload: Record<string, unknown> = {
-    count: countLine,
+  return encode({
+    count: `${mapped.length} results for "${query}"`,
     results: filtered,
-    help,
-  };
-  return encode(payload);
+    help: opts.help({
+      query,
+      args,
+      firstPath: mapped[0]!.path,
+      firstFilteredPath: (filtered[0] as Record<string, unknown> | undefined)?.path,
+    }),
+  });
+}
+
+async function handleSearch(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
+  return searchLikeDocs(args, full, fieldsArg, {
+    argName: "query",
+    missingUsage: "Usage: doctl-axi docs search <query> [--full] [--fields path,title,excerpt]",
+    rejectEmptyQuery: true,
+    // join with space to allow multi-word queries passed as separate args
+    queryOf: (a) => a.join(" ").trim(),
+    help: ({ query, firstPath }) =>
+      firstPath === undefined
+        ? [`docs search "${query}" --full for complete excerpts`, "docs get /path for full page"]
+        : [
+            `docs get ${firstPath} for full page`,
+            `docs search "${query}" --full`,
+            "docs find-for-service <service> for service docs",
+            "docs get-related /path for related pages",
+          ],
+  });
 }
 
 function docBasename(path: string): string | undefined {
@@ -275,32 +287,14 @@ async function handleGet(args: string[], full: boolean, fieldsArg: string | unde
 }
 
 async function handleFindForService(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
-  const allowed = ["path", "title", "excerpt"];
-  const fields = parseFields(fieldsArg, allowed);
-  if (args.length === 0) {
-    throw new AxiError("Missing required argument: <service>", "VALIDATION_ERROR", [
-      "Usage: doctl-axi docs find-for-service <service>",
-    ]);
-  }
-  const service = args.join(" ").trim();
-  const results = await searchDocs(service, full);
-  const mapped = results.map((r) => ({
-    path: truncateField(r.path, full),
-    title: truncateField(r.title, full),
-    excerpt: truncateField(r.excerpt, full),
-  }));
-  if (mapped.length === 0) {
-    return encode({
-      count: `0 results for "${service}"`,
-      results: [],
-      help: [`docs search "${service}" --full`, `docs get /path for full page`],
-    });
-  }
-  const filtered = applyFieldsFilter(mapped as unknown as Record<string, unknown>[], fields);
-  return encode({
-    count: `${mapped.length} results for "${service}"`,
-    results: filtered,
-    help: [`docs get ${mapped[0]!.path} for full page`, `docs search "${service}" --full`],
+  return searchLikeDocs(args, full, fieldsArg, {
+    argName: "service",
+    missingUsage: "Usage: doctl-axi docs find-for-service <service>",
+    queryOf: (a) => a.join(" ").trim(),
+    help: ({ query, firstPath }) =>
+      firstPath === undefined
+        ? [`docs search "${query}" --full`, "docs get /path for full page"]
+        : [`docs get ${firstPath} for full page`, `docs search "${query}" --full`],
   });
 }
 
@@ -320,34 +314,20 @@ async function handleTroubleshoot(args: string[], full: boolean, fieldsArg: stri
 }
 
 async function handleGetRelated(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
-  const allowed = ["path", "title", "excerpt"];
-  const fields = parseFields(fieldsArg, allowed);
-  if (args.length === 0) {
-    throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
-      "Usage: doctl-axi docs get-related <path>",
-    ]);
-  }
-  const docPath = args.join(" ").trim();
-  // Use last segment as query to find related
-  const segment = docPath.split("/").filter(Boolean).pop() ?? docPath;
-  const results = await searchDocs(segment, full);
-  // Filter to not include exact path? keep all
-  const mapped = results.map((r) => ({
-    path: truncateField(r.path, full),
-    title: truncateField(r.title, full),
-    excerpt: truncateField(r.excerpt, full),
-  }));
-  if (mapped.length === 0) {
-    return encode({
-      count: `0 results for "${segment}"`,
-      results: [],
-      help: [`docs search "${segment}" --full`, `docs get ${docPath} for full page`],
-    });
-  }
-  const filtered = applyFieldsFilter(mapped as unknown as Record<string, unknown>[], fields);
-  return encode({
-    count: `${mapped.length} results for "${segment}"`,
-    results: filtered,
-    help: [`docs get ${filtered[0] ? (filtered[0] as Record<string, unknown>).path : docPath} for full page`, `docs search "${segment}" --full`],
+  return searchLikeDocs(args, full, fieldsArg, {
+    argName: "path",
+    missingUsage: "Usage: doctl-axi docs get-related <path>",
+    // Use last segment as query to find related
+    queryOf: (a) => {
+      const docPath = a.join(" ").trim();
+      return docPath.split("/").filter(Boolean).pop() ?? docPath;
+    },
+    help: ({ args, firstPath, firstFilteredPath }) => {
+      const docPath = args.join(" ").trim();
+      const segment = docPath.split("/").filter(Boolean).pop() ?? docPath;
+      return firstPath === undefined
+        ? [`docs search "${segment}" --full`, `docs get ${docPath} for full page`]
+        : [`docs get ${firstFilteredPath} for full page`, `docs search "${segment}" --full`];
+    },
   });
 }

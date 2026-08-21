@@ -1,51 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, chmodSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { decode } from "@toon-format/toon";
+import { makeFakeDoctl, makeFakeDoctlWithExit, runCli } from "./helpers.js";
 
-const BIN = "./dist/bin/doctl-axi.js";
-
-function makeFakeDoctl(dir: string, json: string, captureFile?: string) {
-  const script = join(dir, "doctl");
-  const cap = captureFile ? `echo "$@" > "${captureFile}"\n` : "";
-  writeFileSync(
-    script,
-    `#!/usr/bin/env bash\n${cap}cat <<'JSON'\n${json}\nJSON\n`,
-  );
-  chmodSync(script, 0o755);
-}
-
-function makeFakeDoctlWithExit(dir: string, json: string, exitCode: number) {
-  const script = join(dir, "doctl");
-  writeFileSync(
-    script,
-    `#!/usr/bin/env bash\ncat <<'JSON'\n${json}\nJSON\nexit ${exitCode}\n`,
-  );
-  chmodSync(script, 0o755);
-}
-
-function runCli(
-  args: string[],
-  opts: { env?: Record<string, string | undefined>; fakeDir?: string; stdin?: string } = {},
-) {
-  const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  if (opts.env) {
-    for (const [k, v] of Object.entries(opts.env)) {
-      if (v === undefined) delete env[k];
-      else env[k] = v;
-    }
-  }
-  if (opts.fakeDir) env.PATH = `${opts.fakeDir}:${env.PATH}`;
-  const result = spawnSync("node", [BIN, ...args], {
-    env,
-    input: opts.stdin,
-    encoding: "utf-8",
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  return result;
-}
 
 describe("remaining nouns CLI seam", () => {
   let tmp: string;

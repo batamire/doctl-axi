@@ -151,22 +151,18 @@ function parseDetailFromErrors(json: unknown): string | null {
   return null;
 }
 
-export async function doctlJson<T>(baseArgs: string[], contextFlag?: string): Promise<T> {
+export async function doctlRaw(baseArgs: string[], contextFlag?: string): Promise<ExecResult> {
   const token = resolveToken(contextFlag);
-
   const args: string[] = [];
-  if (token) {
-    args.push("-t", token);
-  }
-  if (contextFlag) {
-    args.push("--context", contextFlag);
-  }
+  if (token) args.push("-t", token);
+  if (contextFlag) args.push("--context", contextFlag);
   args.push(...baseArgs);
-  if (!args.includes("--output")) {
-    args.push("--output", "json");
-  }
+  if (!args.includes("--output")) args.push("--output", "json");
+  return execDoctl(args);
+}
 
-  const result = await execDoctl(args);
+export async function doctlJson<T>(baseArgs: string[], contextFlag?: string): Promise<T> {
+  const result = await doctlRaw(baseArgs, contextFlag);
 
   if (result.stderr === "ENOENT" || result.exitCode === 127) {
     throw new AxiError("doctl is not installed or not on PATH", "UNKNOWN", [
@@ -211,16 +207,6 @@ export async function doctlJson<T>(baseArgs: string[], contextFlag?: string): Pr
   }
 
   return parsed as T;
-}
-
-export async function doctlRaw(baseArgs: string[], contextFlag?: string): Promise<ExecResult> {
-  const token = resolveToken(contextFlag);
-  const args: string[] = [];
-  if (token) args.push("-t", token);
-  if (contextFlag) args.push("--context", contextFlag);
-  args.push(...baseArgs);
-  if (!args.includes("--output")) args.push("--output", "json");
-  return execDoctl(args);
 }
 
 // Delete seam: upstream 404 on a delete resolves to null so callers can report
