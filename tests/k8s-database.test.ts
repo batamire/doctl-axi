@@ -520,4 +520,70 @@ describe("doctl-axi database list CLI seam", () => {
     expect(args).toContain("--context myctx");
     expect(args).not.toContain("-t tok");
   });
+
+  it("database create unknown flag exits 2 with VALIDATION_ERROR", () => {
+    makeFakeDoctl(tmp, "{}");
+    const res = runCli(["database", "create", "mydb", "--bogus"], {
+      fakeDir: tmp,
+      env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+    });
+    expect(res.status).toBe(2);
+    const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+    expect(decoded.code).toBe("VALIDATION_ERROR");
+    expect(String(decoded.error)).toContain("Unknown flag");
+  });
+
+  it("database create forwards legitimate doctl flags verbatim", () => {
+    const json = JSON.stringify({ id: "db-new", name: "mydb", engine: "pg", version: "15", region: "nyc1", status: "creating" });
+    makeFakeDoctl(tmp, json, capture);
+    const res = runCli(
+      ["database", "create", "mydb", "--region", "nyc1", "--size", "db-s-1vcpu-2gb", "--engine", "pg", "--num-nodes", "3"],
+      { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } },
+    );
+    expect(res.status).toBe(0);
+    const args = readFileSync(capture, "utf-8");
+    expect(args).toContain("databases create mydb");
+    expect(args).toContain("--region nyc1");
+    expect(args).toContain("--size db-s-1vcpu-2gb");
+    expect(args).toContain("--engine pg");
+    expect(args).toContain("--num-nodes 3");
+  });
+
+  it("database user list unknown flag exits 2 with VALIDATION_ERROR", () => {
+    makeFakeDoctl(tmp, "[]");
+    const res = runCli(["database", "user", "list", "db-1", "--bogus"], {
+      fakeDir: tmp,
+      env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+    });
+    expect(res.status).toBe(2);
+    const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+    expect(decoded.code).toBe("VALIDATION_ERROR");
+    expect(String(decoded.error)).toContain("Unknown flag");
+  });
+
+  it("database user list honors --fields", () => {
+    const json = JSON.stringify([{ name: "doadmin", role: "primary", type: "normal" }]);
+    makeFakeDoctl(tmp, json);
+    const res = runCli(["database", "user", "list", "db-1", "--fields", "name"], {
+      fakeDir: tmp,
+      env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+    });
+    expect(res.status).toBe(0);
+    const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+    const users = decoded.users as Array<Record<string, unknown>>;
+    expect(users[0].name).toBe("doadmin");
+    expect("role" in users[0]).toBe(false);
+  });
+
+  it("kubernetes cluster kubeconfig rejects --fields with VALIDATION_ERROR", () => {
+    makeFakeDoctl(tmp, "{}");
+    const res = runCli(["kubernetes", "cluster", "kubeconfig", "k8s-abc", "--fields", "id"], {
+      fakeDir: tmp,
+      env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" },
+    });
+    expect(res.status).toBe(2);
+    const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+    expect(decoded.code).toBe("VALIDATION_ERROR");
+    expect(String(decoded.error)).toContain("Unknown flag");
+  });
 });

@@ -7,6 +7,24 @@ import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js"
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
 
+// Flags forwarded verbatim to `doctl kubernetes cluster create`, in addition
+// to the locally consumed --full/--fields/--context.
+const K8S_CREATE_ALLOWED_FLAGS = [
+  "--full",
+  "--fields",
+  "--context",
+  "--name",
+  "--region",
+  "--version",
+  "--vpc-uuid",
+  "--node-pool",
+  "--tag",
+  "--wait",
+  "--surge-upgrade",
+  "--ha",
+  "--maintenance-window",
+];
+
 
 export const KUBERNETES_HELP = encode({
   command: "kubernetes",
@@ -200,19 +218,17 @@ async function kubernetesClusterCreate(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
     return KUBERNETES_HELP;
   }
-  // For create, allow pass-through flags (like --name, --region, --version, etc)
-  // Only extract known global flags, leave rest for doctl
+  rejectUnknownFlags(rawArgs, K8S_CREATE_ALLOWED_FLAGS, "Run `doctl-axi kubernetes cluster create --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields"); // might be unused but allow
+  const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
-  // remaining args are doctl create flags/positional
-  // Do not reject unknown flags for create (pass-through)
-  // Validate fields if provided
+  let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
     const allowed = new Set(["id", "name", "region", "status"]);
     for (const f of requested) if (!allowed.has(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,status"]);
+    fields = requested;
   }
   const raw = await doctlJson<unknown>(["kubernetes", "cluster", "create", ...args], contextFlag);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
@@ -220,7 +236,13 @@ async function kubernetesClusterCreate(rawArgs: string[]): Promise<string> {
     return encode({ result: raw, help: ["doctl-axi kubernetes cluster list"] });
   }
   const mapped = toKubernetesToon(rec as unknown as KubernetesRaw, full);
-  return encode({ cluster: mapped as unknown as Record<string, unknown>, help: ["doctl-axi kubernetes cluster list"] });
+  let filtered: Record<string, unknown> = mapped as unknown as Record<string, unknown>;
+  if (fields) {
+    const obj: Record<string, unknown> = {};
+    for (const f of fields) obj[f] = (mapped as Record<string, unknown>)[f];
+    filtered = obj;
+  }
+  return encode({ cluster: filtered, help: ["doctl-axi kubernetes cluster list"] });
 }
 
 async function kubernetesClusterDelete(rawArgs: string[]): Promise<string> {
@@ -256,10 +278,6 @@ async function kubernetesClusterKubeconfig(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  const fieldsVal = takeFlagValue(args, "--fields");
-  if (fieldsVal !== undefined) {
-    // ignore --fields for kubeconfig (no field filtering)
-  }
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
