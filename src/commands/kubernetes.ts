@@ -1,5 +1,5 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson, doctlRaw, mapDoctlError } from "../lib/doctl.js";
+import { doctlDelete, doctlJson, doctlRaw, mapDoctlError } from "../lib/doctl.js";
 import { toKubernetesToon, toNodePoolToon, truncateField } from "../lib/toon.js";
 import type { KubernetesRaw, NodePoolRaw } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
@@ -262,7 +262,8 @@ async function kubernetesClusterDelete(rawArgs: string[]): Promise<string> {
     throw new AxiError("Missing cluster id", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes cluster delete <id>"]);
   }
   const id = args[0];
-  const raw = await doctlJson<unknown>(["kubernetes", "cluster", "delete", id], contextFlag);
+  const raw = await doctlDelete<unknown>(["kubernetes", "cluster", "delete", id], contextFlag);
+  if (raw === null) return encode({ delete: "already_deleted", cluster: id, help: ["doctl-axi kubernetes cluster list"] });
   // delete may return empty or object
   if (Array.isArray(raw) && raw.length === 0) {
     return encode({ deleted: id, help: ["doctl-axi kubernetes cluster list"] });
@@ -447,6 +448,7 @@ async function nodePoolDelete(rawArgs: string[]): Promise<string> {
   if (args.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi kubernetes node-pool delete <cluster-id> <pool-id>"]);
   const clusterId = args[0];
   const poolId = args[1];
-  const raw = await doctlJson<unknown>(["kubernetes", "cluster", "node-pool", "delete", clusterId, poolId], contextFlag);
+  const raw = await doctlDelete<unknown>(["kubernetes", "cluster", "node-pool", "delete", clusterId, poolId], contextFlag);
+  if (raw === null) return encode({ delete: "already_deleted", pool: poolId, cluster: clusterId, help: ["doctl-axi kubernetes node-pool list"] });
   return encode({ deleted: poolId, result: raw, help: ["doctl-axi kubernetes node-pool list"] });
 }

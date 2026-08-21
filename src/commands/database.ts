@@ -1,5 +1,5 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
+import { doctlDelete, doctlJson } from "../lib/doctl.js";
 import { toDatabaseToon, truncateField } from "../lib/toon.js";
 import type { DatabaseRaw } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
@@ -194,7 +194,8 @@ async function databaseDelete(rawArgs: string[]): Promise<string> {
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi database delete --help`"]);
   if (args.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database delete <id>"]);
   const id = args[0];
-  const raw = await doctlJson<unknown>(["databases", "delete", id], contextFlag);
+  const raw = await doctlDelete<unknown>(["databases", "delete", id], contextFlag);
+  if (raw === null) return encode({ delete: "already_deleted", database: id, help: ["doctl-axi database list"] });
   if (Array.isArray(raw) && raw.length === 0) return encode({ deleted: id, help: ["doctl-axi database list"] });
   return encode({ deleted: id, result: raw, help: ["doctl-axi database list"] });
 }
@@ -289,7 +290,8 @@ async function databaseUser(rawArgs: string[]): Promise<string> {
   if (action === "delete") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database user delete <db-id> <user>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database user delete --help` for available flags");
-    const raw = await doctlJson<unknown>(["databases", "user", "delete", remaining[0], remaining[1]], contextFlag);
+    const raw = await doctlDelete<unknown>(["databases", "user", "delete", remaining[0], remaining[1]], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", user: remaining[1], database: remaining[0], help: ["doctl-axi database user list"] });
     return encode({ deleted: remaining[1], result: raw, help: ["doctl-axi database user list"] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: list, get, create, delete"]);
@@ -344,7 +346,8 @@ async function databaseTopic(rawArgs: string[]): Promise<string> {
   if (action === "delete") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database topic delete <db-id> <topic>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database topic delete --help` for available flags");
-    const raw = await doctlJson<unknown>(["databases", "topic", "delete", remaining[0], remaining[1]], contextFlag);
+    const raw = await doctlDelete<unknown>(["databases", "topic", "delete", remaining[0], remaining[1]], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", topic: remaining[1], database: remaining[0], help: ["doctl-axi database topic list"] });
     return encode({ deleted: remaining[1], result: raw, help: ["doctl-axi database topic list"] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: list, get, create, delete"]);
@@ -398,7 +401,8 @@ async function databasePool(rawArgs: string[]): Promise<string> {
   if (action === "delete") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", ["Usage: doctl-axi database pool delete <db-id> <pool>"]);
     rejectUnknownFlags(remaining.slice(2), [], "Run `doctl-axi database pool delete --help` for available flags");
-    const raw = await doctlJson<unknown>(["databases", "pool", "delete", remaining[0], remaining[1]], contextFlag);
+    const raw = await doctlDelete<unknown>(["databases", "pool", "delete", remaining[0], remaining[1]], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", pool: remaining[1], database: remaining[0], help: ["doctl-axi database pool list"] });
     return encode({ deleted: remaining[1], result: raw, help: ["doctl-axi database pool list"] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: list, get, create, delete"]);

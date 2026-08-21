@@ -1,5 +1,5 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
+import { doctlDelete, doctlJson } from "../lib/doctl.js";
 import { toSpaceKeyToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
 import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
@@ -162,6 +162,7 @@ async function spaceKeyDelete(rawArgs: string[]): Promise<string> {
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi space key delete --help` for available flags");
   const name = args[0];
   if (!name) throw new AxiError("Missing name for space key delete", "VALIDATION_ERROR", ["Usage: doctl-axi space key delete <name>"]);
-  await doctlJson<unknown>(["spaces", "keys", "delete", name], contextFlag);
+  const raw = await doctlDelete<unknown>(["spaces", "keys", "delete", name], contextFlag);
+  if (raw === null) return encode({ delete: "already_deleted", key: name, help: ["doctl-axi space key list for overview"] });
   return encode({ deleted: name, help: ["doctl-axi space key list for overview"] });
 }

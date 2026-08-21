@@ -1,5 +1,5 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson } from "../lib/doctl.js";
+import { doctlDelete, doctlJson } from "../lib/doctl.js";
 import {
   toNetworkDomainToon,
   toNetworkRecordToon,
@@ -276,7 +276,8 @@ async function handleDomain(verb: string, rawArgs: string[], sub: string): Promi
     if (args.length === 0) throw new AxiError("Missing domain name for delete", "VALIDATION_ERROR", [`Run \`doctl-axi network domain delete --help\``]);
     const domain = args[0];
     // doctl delete requires --force to avoid prompt; add if not present
-    const raw = await doctlJson<unknown>(["compute", "domain", "delete", domain, "--force"], contextFlag);
+    const raw = await doctlDelete<unknown>(["compute", "domain", "delete", domain, "--force"], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", domain, help: ["doctl-axi network domain list"] });
     return encode({ deleted: domain, help: ["doctl-axi network domain list"] });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
@@ -343,7 +344,8 @@ async function handleRecord(verb: string, rawArgs: string[], sub: string): Promi
     if (args.length < 2) throw new AxiError("Missing arguments for record delete: <domain> <record-id>", "VALIDATION_ERROR", [`Run \`doctl-axi network record delete --help\``]);
     const domain = args[0];
     const id = args[1];
-    await doctlJson<unknown>(["compute", "domain", "records", "delete", domain, id], contextFlag);
+    const raw = await doctlDelete<unknown>(["compute", "domain", "records", "delete", domain, id], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", record: id, domain, help: ["doctl-axi network record list " + domain] });
     return encode({ deleted: id, help: ["doctl-axi network record list " + domain] });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
@@ -386,7 +388,8 @@ async function handleFirewall(verb: string, rawArgs: string[], sub: string): Pro
   if (verb === "delete") {
     if (args.length === 0) throw new AxiError("Missing id for firewall delete", "VALIDATION_ERROR", [`Run \`doctl-axi network firewall delete --help\``]);
     const id = args[0];
-    await doctlJson<unknown>(["compute", "firewall", "delete", id, "--force"], contextFlag);
+    const raw = await doctlDelete<unknown>(["compute", "firewall", "delete", id, "--force"], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", firewall: id, help: ["doctl-axi network firewall list"] });
     return encode({ deleted: id, help: ["doctl-axi network firewall list"] });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
@@ -429,7 +432,8 @@ async function handleLoadBalancer(verb: string, rawArgs: string[], sub: string):
   if (verb === "delete") {
     if (args.length === 0) throw new AxiError("Missing id for load-balancer delete", "VALIDATION_ERROR", [`Run \`doctl-axi network load-balancer delete --help\``]);
     const id = args[0];
-    await doctlJson<unknown>(["compute", "load-balancer", "delete", id, "--force"], contextFlag);
+    const raw = await doctlDelete<unknown>(["compute", "load-balancer", "delete", id, "--force"], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", load_balancer: id, help: ["doctl-axi network load-balancer list"] });
     return encode({ deleted: id });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
@@ -472,7 +476,8 @@ async function handleVpc(verb: string, rawArgs: string[], sub: string): Promise<
   if (verb === "delete") {
     if (args.length === 0) throw new AxiError("Missing id for vpc delete", "VALIDATION_ERROR", [`Run \`doctl-axi network vpc delete --help\``]);
     const id = args[0];
-    await doctlJson<unknown>(["vpcs", "delete", id, "--force"], contextFlag);
+    const raw = await doctlDelete<unknown>(["vpcs", "delete", id, "--force"], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", vpc: id, help: ["doctl-axi network vpc list"] });
     return encode({ deleted: id });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
@@ -515,7 +520,8 @@ async function handlePeering(verb: string, rawArgs: string[], sub: string): Prom
   if (verb === "delete") {
     if (args.length === 0) throw new AxiError("Missing id for peering delete", "VALIDATION_ERROR", [`Run \`doctl-axi network peering delete --help\``]);
     const id = args[0];
-    await doctlJson<unknown>(["vpcs", "peerings", "delete", id, "--force"], contextFlag);
+    const raw = await doctlDelete<unknown>(["vpcs", "peerings", "delete", id, "--force"], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", peering: id, help: ["doctl-axi network peering list"] });
     return encode({ deleted: id });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
@@ -558,7 +564,8 @@ async function handleCdn(verb: string, rawArgs: string[], sub: string): Promise<
   if (verb === "delete") {
     if (args.length === 0) throw new AxiError("Missing id for cdn delete", "VALIDATION_ERROR", [`Run \`doctl-axi network cdn delete --help\``]);
     const id = args[0];
-    await doctlJson<unknown>(["compute", "cdn", "delete", id, "--force"], contextFlag);
+    const raw = await doctlDelete<unknown>(["compute", "cdn", "delete", id, "--force"], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", cdn: id, help: ["doctl-axi network cdn list"] });
     return encode({ deleted: id });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
@@ -601,7 +608,8 @@ async function handleCertificate(verb: string, rawArgs: string[], sub: string): 
   if (verb === "delete") {
     if (args.length === 0) throw new AxiError("Missing id for certificate delete", "VALIDATION_ERROR", [`Run \`doctl-axi network certificate delete --help\``]);
     const id = args[0];
-    await doctlJson<unknown>(["compute", "certificate", "delete", id, "--force"], contextFlag);
+    const raw = await doctlDelete<unknown>(["compute", "certificate", "delete", id, "--force"], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", certificate: id, help: ["doctl-axi network certificate list"] });
     return encode({ deleted: id });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
@@ -644,7 +652,8 @@ async function handleReservedIp(verb: string, rawArgs: string[], sub: string): P
   if (verb === "delete") {
     if (args.length === 0) throw new AxiError("Missing ip for reserved-ip delete", "VALIDATION_ERROR", [`Run \`doctl-axi network reserved-ip delete --help\``]);
     const ip = args[0];
-    await doctlJson<unknown>(["compute", "reserved-ip", "delete", ip, "--force"], contextFlag);
+    const raw = await doctlDelete<unknown>(["compute", "reserved-ip", "delete", ip, "--force"], contextFlag);
+    if (raw === null) return encode({ delete: "already_deleted", reserved_ip: ip, help: ["doctl-axi network reserved-ip list"] });
     return encode({ deleted: ip });
   }
   throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);

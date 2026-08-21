@@ -1,5 +1,5 @@
 import { AxiError } from "axi-sdk-js";
-import { doctlJson, doctlRaw } from "../lib/doctl.js";
+import { doctlDelete, doctlJson, doctlRaw } from "../lib/doctl.js";
 import { toAppToon, toAppDeploymentToon } from "../lib/toon.js";
 import { encode } from "@toon-format/toon";
 import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
@@ -218,7 +218,8 @@ async function appDelete(rawArgs: string[]): Promise<string> {
   const id = args[0];
   if (!id) throw new AxiError("Missing id for app delete", "VALIDATION_ERROR", ["Usage: doctl-axi app delete <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app delete --help`"]);
-  await doctlJson<unknown>(["apps", "delete", id], contextFlag);
+  const raw = await doctlDelete<unknown>(["apps", "delete", id], contextFlag);
+  if (raw === null) return encode({ delete: "already_deleted", app: id, help: ["doctl-axi app list for overview"] });
   return encode({ deleted: id, help: ["doctl-axi app list for overview"] });
 }
 

@@ -186,3 +186,14 @@ export async function doctlRaw(baseArgs: string[], contextFlag?: string): Promis
   if (!args.includes("--output")) args.push("--output", "json");
   return execDoctl(args);
 }
+
+// Delete seam: upstream 404 on a delete resolves to null so callers can report
+// an idempotent no-op success instead of an error. Other errors rethrow.
+export async function doctlDelete<T>(baseArgs: string[], contextFlag?: string): Promise<T | null> {
+  try {
+    return await doctlJson<T>(baseArgs, contextFlag);
+  } catch (err) {
+    if (err instanceof AxiError && err.code === "NOT_FOUND") return null;
+    throw err;
+  }
+}
