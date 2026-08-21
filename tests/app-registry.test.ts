@@ -36,7 +36,7 @@ describe("doctl-axi app CLI seam", () => {
     const res = runCli(["app", "list"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const apps = decoded.apps as Array<Record<string, unknown>>;
     expect(apps).toHaveLength(2);
     expect(apps[0].id).toBe("app-111");
@@ -146,7 +146,7 @@ describe("doctl-axi app CLI seam", () => {
     const res = runCli(["app", "list-deployments", "app-111"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const deps = decoded.deployments as Array<Record<string, unknown>>;
     expect(deps).toHaveLength(2);
     expect(deps[0].id).toBe("dep-aaa");
@@ -224,7 +224,7 @@ describe("doctl-axi registry CLI seam", () => {
     const res = runCli(["registry", "repository", "list"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const repos = decoded.repositories as Array<Record<string, unknown>>;
     expect(repos).toHaveLength(2);
     expect(repos[0].name).toBe("repo-one");
@@ -274,7 +274,7 @@ describe("doctl-axi registry CLI seam", () => {
     const res = runCli(["registry", "tag", "list", "repo-one"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const tags = decoded.tags as Array<Record<string, unknown>>;
     expect(tags[0].repository).toBe("repo-one");
     expect(tags[0].tag).toBe("latest");
@@ -313,7 +313,7 @@ describe("doctl-axi registry CLI seam", () => {
     const res = runCli(["registry", "manifest", "list", "repo-one"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const manifests = decoded.manifests as Array<Record<string, unknown>>;
     expect(manifests[0].digest).toBe("sha256:aaa");
     expect(manifests[0].tags).toBe("latest");
@@ -337,7 +337,7 @@ describe("doctl-axi registry CLI seam", () => {
     const res = runCli(["registry", "garbage-collection", "list"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const gcs = decoded.garbageCollections as Array<Record<string, unknown>>;
     expect(gcs[0].id).toBe("gc-111");
     expect(gcs[0].registry).toBe("myreg");

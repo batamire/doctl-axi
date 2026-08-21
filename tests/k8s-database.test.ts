@@ -41,7 +41,7 @@ describe("doctl-axi kubernetes cluster list CLI seam", () => {
     });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const clusters = decoded.clusters as Array<Record<string, unknown>>;
     expect(clusters).toHaveLength(2);
     expect(clusters[0].id).toBe("k8s-abc");

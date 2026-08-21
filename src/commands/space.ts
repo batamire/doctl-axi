@@ -82,7 +82,7 @@ async function spaceKeyList(rawArgs: string[]): Promise<string> {
   const mapped = rawArray.map((item) => toSpaceKeyToon(item as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${rawArray.length} total`,
+    count: `${mapped.length}`,
     spaces: filtered,
     help: [`space key get ${mapped[0].name} for detail`, "doctl-axi space key list --full for complete fields"],
   };

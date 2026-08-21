@@ -48,7 +48,7 @@ async function regionList(rawArgs: string[]): Promise<string> {
   const mapped = rawArray.map((item) => toRegionToon(item as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${rawArray.length} total`,
+    count: `${mapped.length}`,
     regions: filtered,
     help: ["doctl-axi region list --full for complete fields"],
   };

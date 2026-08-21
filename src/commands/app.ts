@@ -104,9 +104,8 @@ async function appList(rawArgs: string[]): Promise<string> {
 
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
 
-  const totalCount = rawArray.length;
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${totalCount} total`,
+    count: `${mapped.length}`,
     apps: filtered,
     help: [`app get ${mapped[0].id} for detail`, "doctl-axi app list --full for complete fields"],
   };
@@ -208,7 +207,7 @@ async function appListDeployments(rawArgs: string[]): Promise<string> {
   if (rawArray.length === 0) return "0 deployments";
   const mapped = rawArray.map((it) => toAppDeploymentToon(it as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-  return encode({ count: `${mapped.length} of ${mapped.length} total`, deployments: filtered, help: [`app get-deployment ${id} ${mapped[0].id} for detail`] });
+  return encode({ count: `${mapped.length}`, deployments: filtered, help: [`app get-deployment ${id} ${mapped[0].id} for detail`] });
 }
 
 async function appGetDeployment(rawArgs: string[]): Promise<string> {

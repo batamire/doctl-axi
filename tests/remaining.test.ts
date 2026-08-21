@@ -27,7 +27,7 @@ describe("remaining nouns CLI seam", () => {
     const res = runCli(["volume", "list"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const volumes = decoded.volumes as Array<Record<string, unknown>>;
     expect(volumes).toHaveLength(2);
     expect(volumes[0].id).toBe("vol-abc123");
@@ -104,7 +104,7 @@ describe("remaining nouns CLI seam", () => {
     const res = runCli(["space", "key", "list"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const spaces = decoded.spaces as Array<Record<string, unknown>>;
     expect(spaces).toHaveLength(2);
     expect(spaces[0].name).toBe("my-key");
@@ -149,7 +149,7 @@ describe("remaining nouns CLI seam", () => {
     const res = runCli(["dedicated-inference", "list"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     const inf = decoded.inference as Array<Record<string, unknown>>;
     expect(inf).toHaveLength(2);
     expect(inf[0].id).toBe("inf-1");

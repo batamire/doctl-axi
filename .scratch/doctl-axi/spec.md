@@ -61,7 +61,7 @@ Ship `doctl-axi` as an AXI-compliant npm package (`doctl-axi`, bins `doctl-axi` 
 - **Glossary & taxonomy:** Canonical nouns are singular (gh-axi idiom) per `CONTEXT.md`: `droplet` (avoid `droplets`), `app`, `database`, `kubernetes` (alias `k8s`/`doks`), `registry` (avoid `docr`), `space` (keys only), `volume`, `nfs`, `account`/`balance`/`billing`/`invoice`/`region`, `dedicated-inference`, `insight`, `marketplace`, `docs`. `network` is consolidated: `domain`/`record`/`certificate`/`firewall`/`load-balancer`/`vpc`/`peering`/`cdn`/`reserved-ip` as subcommands (MCP groups VPC+peering inside networking; `doctl` scatters it across four top-levels — AXI consolidates).
 - **TOON field policy (Principle 2/3/4/5):** 4 fields per list item + aggregates + definitive empty per prototype — from `prototype/toon-samples.md` (decision-rich inline, trimmed):
   ```toon
-  count: 2 of 2 total
+  count: 2
   status: active 2/2
   ---
   - id: 12345678
@@ -71,6 +71,7 @@ Ship `doctl-axi` as an AXI-compliant npm package (`doctl-axi`, bins `doctl-axi` 
   help: ["droplet get 12345678 for detail", "doctl-axi droplet list --full"]
   ```
   Droplet: `id`/`name`/`region`/`size+status`; App: `id`/`name`/`region`/`phase+activeDeployment`; Database: `id`/`name`/`engine`/`version+region/status` + `engine` bucket aggregate; Network domain: `name`/`ttl`/`records`. Aggregates are `count` plus one domain bucket (`status`, `engine`) per list, not a full matrix. Empty is `0 droplets` (exit 0). `--fields` selects subset; `--full` disables truncation; field values >8k chars are truncated with `... [truncated N chars, use --full]`. Sensitive fields (`database` `connection.uri`, `user.password`, `region.sizes` bloat) are omitted from TOON by default.
+  Count uses the simple `count: N` form (amended 2026-08-21, gh-axi simple-count convention — doctl provides no separate upstream total, so `N of T` was always redundant).
 - **Error & help contracts (Principle 6/9/10):** All errors are TOON `{error, code, help}` on stdout with appropriate exit code; unknown flags fail fast with validation error, not silent drop; mutations prefer idempotent no-op success when upstream reports 404 on delete; secrets never appear in argv (use `stdin` pipe for `auth`); after each output include `help:` next-step disclosure; per-command `--help` is concise plus `TOP_HELP` global.
 - **Dashboard (Principle 8):** Bare invocation shows rich live state via `Promise.all` parallel fetches (`account get`, `balance get`, `droplet list`, `app list`, `database list`, `kubernetes cluster list`, `registry get`, `network domain list` — counts only). Individual failures degrade to `—` rather than crashing the dashboard.
 - **Distribution:** Skill (`skills/doctl-axi/SKILL.md`, `user-invocable:false`, Hermes devops metadata, `npx skills add doctl-axi`) is primary zero-setup path; `npm` global (`npm i -g doctl-axi` + `npx -y doctl-axi`) plus `doctl-axi setup hooks` (writes `~/.claude/settings.json`, `~/.codex/hooks.json`, opencode plugin) is secondary ambient path. Versioning via `release-please`, self-update via `doctl-axi update`.

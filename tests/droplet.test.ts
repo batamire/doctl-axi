@@ -38,7 +38,7 @@ describe("doctl-axi droplet list CLI seam", () => {
 
     expect(res.status).toBe(0);
     const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
-    expect(decoded.count).toBe("2 of 2 total");
+    expect(decoded.count).toBe("2");
     expect(decoded.status).toBe("active 2/2");
     const droplets = decoded.droplets as Array<Record<string, unknown>>;
     expect(droplets).toHaveLength(2);

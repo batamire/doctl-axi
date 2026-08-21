@@ -58,7 +58,7 @@ async function uptimeList(rawArgs: string[]): Promise<string> {
   const mapped = rawArray.map((item) => toInsightToon(item as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${rawArray.length} total`,
+    count: `${mapped.length}`,
     checks: filtered,
     help: ["doctl-axi insight uptime list --full for complete fields"],
   };

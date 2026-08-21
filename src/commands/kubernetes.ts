@@ -127,9 +127,8 @@ async function kubernetesClusterList(rawArgs: string[]): Promise<string> {
     return toKubernetesToon(rawK, full);
   });
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-  const totalCount = rawArray.length;
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${totalCount} total`,
+    count: `${mapped.length}`,
     clusters: filtered,
     help: [`kubernetes cluster get ${mapped[0].id} for detail`, "doctl-axi kubernetes cluster list --full"],
   };
@@ -302,7 +301,7 @@ async function nodePoolList(rawArgs: string[]): Promise<string> {
   });
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${rawArray.length} total`,
+    count: `${mapped.length}`,
     pools: filtered,
     help: ["doctl-axi kubernetes node-pool list --full"],
   };

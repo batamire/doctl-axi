@@ -140,11 +140,10 @@ async function dropletList(rawArgs: string[]): Promise<string> {
 
   const filteredForEncode = projectFields(mapped as unknown as Record<string, unknown>[], fields);
 
-  const totalCount = rawArray.length;
   const active = mapped.filter((d) => d.status === "active").length;
 
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${totalCount} total`,
+    count: `${mapped.length}`,
     status: `active ${active}/${mapped.length}`,
     droplets: filteredForEncode,
     help: [`droplet get ${mapped[0].id} for detail`, "doctl-axi droplet list --full for complete fields"],

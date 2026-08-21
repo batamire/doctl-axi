@@ -49,10 +49,9 @@ async function nfsList(rawArgs: string[]): Promise<string> {
   if (rawArray.length === 0) return "0 nfs shares";
   const mapped = rawArray.map((item) => toNfsToon(item as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-  const totalCount = rawArray.length;
   const available = mapped.filter((d) => d.status === "available").length;
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${totalCount} total`,
+    count: `${mapped.length}`,
     status: `available ${available}/${mapped.length}`,
     nfs: filtered,
     help: [`nfs get ${mapped[0].id} for detail`, "doctl-axi nfs list --full for complete fields"],

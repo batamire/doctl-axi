@@ -127,7 +127,7 @@ async function registryRepositoryList(rawArgs: string[]): Promise<string> {
   const mapped = rawArray.map((it) => toRegistryRepositoryToon(it as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
-    count: `${mapped.length} of ${mapped.length} total`,
+    count: `${mapped.length}`,
     repositories: filtered,
     help: ["registry tag list <repository> for tags", "doctl-axi registry repository list --full for complete fields"],
   });
@@ -160,7 +160,7 @@ async function registryTagList(rawArgs: string[]): Promise<string> {
   const mapped = rawArray.map((it) => toRegistryTagToon(it as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
-    count: `${mapped.length} of ${mapped.length} total`,
+    count: `${mapped.length}`,
     tags: filtered,
     help: ["registry manifest list <repository> for manifests", "doctl-axi registry tag list --full for complete fields"],
   });
@@ -222,7 +222,7 @@ async function registryManifestList(rawArgs: string[]): Promise<string> {
   const mapped = rawArray.map((it) => toRegistryManifestToon(it as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
-    count: `${mapped.length} of ${mapped.length} total`,
+    count: `${mapped.length}`,
     manifests: filtered,
     help: ["registry tag list <repository> for tags", "doctl-axi registry manifest list --full for complete fields"],
   });
@@ -252,7 +252,7 @@ async function registryGCList(rawArgs: string[]): Promise<string> {
   const mapped = rawArray.map((it) => toRegistryGCToon(it as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
-    count: `${mapped.length} of ${mapped.length} total`,
+    count: `${mapped.length}`,
     garbageCollections: filtered,
     help: ["registry garbage-collection get <id> for detail", "doctl-axi registry garbage-collection list --full for complete fields"],
   });

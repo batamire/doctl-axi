@@ -51,7 +51,7 @@ async function list(rawArgs: string[]): Promise<string> {
   const mapped = rawArray.map((item) => toDedicatedInferenceToon(item as never, full));
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${rawArray.length} total`,
+    count: `${mapped.length}`,
     status: `active ${mapped.filter((d) => d.status === "active").length}/${mapped.length}`,
     inference: filtered,
     help: ["doctl-axi dedicated-inference list --full for complete fields"],

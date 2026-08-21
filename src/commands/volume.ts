@@ -73,10 +73,9 @@ async function volumeList(rawArgs: string[]): Promise<string> {
 
   const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
 
-  const totalCount = rawArray.length;
   const available = mapped.filter((d) => d.status === "available").length;
   const payload: Record<string, unknown> = {
-    count: `${mapped.length} of ${totalCount} total`,
+    count: `${mapped.length}`,
     status: `available ${available}/${mapped.length}`,
     volumes: filtered,
     help: [`volume get ${mapped[0].id} for detail`, "doctl-axi volume list --full for complete fields"],

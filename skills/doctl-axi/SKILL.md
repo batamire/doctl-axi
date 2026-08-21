@@ -51,6 +51,6 @@ Run `npx -y doctl-axi --help` for global flags, or `npx -y doctl-axi <command> -
 ## Tips
 
 - Output is TOON-encoded and token-efficient; pipe through grep/head only when a list is very long.
-- Every list keeps 4 fields + aggregates (`count: N of T total`, `status:` or `engine:` bucket) — use `--fields` to cut further, `--full` only when truncation hint appears.
+- Every list keeps 4 fields + aggregates (`count: N`, `status:` or `engine:` bucket) — use `--fields` to cut further, `--full` only when truncation hint appears.
 - Mutations are idempotent where upstream 404 on delete maps to no-op — check `help:` for the next verb.
 - Run `npx -y doctl-axi <noun> list --help` for per-noun flags; unknown flags fail loud `VALIDATION_ERROR` exit 2.
