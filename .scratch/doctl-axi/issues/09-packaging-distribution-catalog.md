@@ -29,3 +29,5 @@ Resolved 2026-08-20. Grilling completed (1 question). Pre-checks: `npm view do-a
 
 - **Repo:** standalone `github.com/<owner>/do-axi` (not fork of labs MCP), MIT like gh-axi/chrome-devtools-axi.
 
+**Addendum 2026-08-21:** Catalog PR to `kunchenguid/axi/catalog.yaml` intentionally not filed — deliberate skip, not an outstanding item. Repo renamed to `github.com/batamire/doctl-axi`; all other distrib items shipped as decided (npm `doctl-axi@0.1.3`, skill, hooks, release-please).
+
