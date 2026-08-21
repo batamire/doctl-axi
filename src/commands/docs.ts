@@ -225,32 +225,53 @@ async function handleSearch(args: string[], full: boolean, fieldsArg: string | u
   return encode(payload);
 }
 
-async function handleGet(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
-  const allowed = ["path", "excerpt", "title"];
-  const fields = parseFields(fieldsArg, allowed);
+function docBasename(path: string): string | undefined {
+  return path.split("/").filter(Boolean).pop();
+}
+
+// Shared implementation of the three get-like doc handlers (get, get-quickstart,
+// troubleshoot): validate args, fetch the page, derive the title from markdown,
+// project onto requested fields, append handler-specific help hints.
+type FetchDocPageOpts = {
+  /** Usage hint attached to the missing-argument error. */
+  missingUsage: string;
+  /** Hints attached to the unexpected-argument error. */
+  unexpectedHint: string[];
+  /** Handler-specific help hints appended to the payload. */
+  help: (path: string) => string[];
+  /** `docs get` parses --fields before validating positional args; others after. */
+  parseFieldsBeforeArgs?: boolean;
+};
+
+async function fetchDocPage(args: string[], full: boolean, fieldsArg: string | undefined, opts: FetchDocPageOpts): Promise<string> {
+  let fields = opts.parseFieldsBeforeArgs ? parseFields(fieldsArg, ["path", "excerpt", "title"]) : undefined;
   if (args.length === 0) {
-    throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
-      "Usage: doctl-axi docs get <path> [--full]",
-    ]);
+    throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [opts.missingUsage]);
   }
   const docPath = args[0]!.trim();
   if (args.length > 1) {
-    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi docs get --help`"]);
+    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", opts.unexpectedHint);
   }
+  fields ??= parseFields(fieldsArg, ["path", "excerpt", "title"]);
   const { path, excerpt } = await getDoc(docPath, full);
-  // truncate excerpt if needed
   const truncated = truncateField(excerpt, full);
   // Derive title from markdown # heading as fallback; basename of path if no heading found
   const titleFromMd = (() => {
     const m = excerpt.match(/^#\s+(.+)$/m);
-    if (m && m[1]) return m[1].trim();
-    const last = path.split("/").filter(Boolean).pop();
-    return last ? last : path;
+    return m && m[1] ? m[1].trim() : docBasename(path) ?? path;
   })();
   const title = truncateField(titleFromMd, full);
-  const help = [`docs search "${path.split("/").filter(Boolean).pop() ?? "droplets"}" --full`, "docs get-related " + path + " for related pages", "docs find-for-service <service> for service docs"];
-  const payload = { ...projectFields([{ path, excerpt: truncated, title }], fields)[0], help };
+  const payload = { ...projectFields([{ path, excerpt: truncated, title }], fields)[0], help: opts.help(path) };
   return encode(payload);
+}
+
+async function handleGet(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
+  return fetchDocPage(args, full, fieldsArg, {
+    parseFieldsBeforeArgs: true,
+    missingUsage: "Usage: doctl-axi docs get <path> [--full]",
+    unexpectedHint: ["Run `doctl-axi docs get --help`"],
+    help: (path) => [`docs search "${docBasename(path) ?? "droplets"}" --full`, "docs get-related " + path + " for related pages", "docs find-for-service <service> for service docs"],
+  });
 }
 
 async function handleFindForService(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
@@ -284,55 +305,18 @@ async function handleFindForService(args: string[], full: boolean, fieldsArg: st
 }
 
 async function handleGetQuickstart(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
-  // same as get, but help hints quickstart
-  if (args.length === 0) {
-    throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
-      "Usage: doctl-axi docs get-quickstart <path>",
-    ]);
-  }
-  const docPath = args[0]!.trim();
-  if (args.length > 1) {
-    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", []);
-  }
-  const allowed = ["path", "excerpt", "title"];
-  const fields = parseFields(fieldsArg, allowed);
-  const { path, excerpt } = await getDoc(docPath, full);
-  const truncated = truncateField(excerpt, full);
-  const titleFromMd = (() => {
-    const m = excerpt.match(/^#\s+(.+)$/m);
-    if (m && m[1]) return m[1].trim();
-    const last = path.split("/").filter(Boolean).pop();
-    return last ? last : path;
-  })();
-  const title = truncateField(titleFromMd, full);
-  const help = ["docs get " + path + " for full page", `docs search "${path.split("/").filter(Boolean).pop() ?? "droplets"}" --full`];
-  const payload = { ...projectFields([{ path, excerpt: truncated, title }], fields)[0], help };
-  return encode(payload);
+  return fetchDocPage(args, full, fieldsArg, {
+    missingUsage: "Usage: doctl-axi docs get-quickstart <path>",
+    unexpectedHint: [],
+    help: (path) => ["docs get " + path + " for full page", `docs search "${docBasename(path) ?? "droplets"}" --full`],
+  });
 }
 async function handleTroubleshoot(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
-  if (args.length === 0) {
-    throw new AxiError("Missing required argument: <path>", "VALIDATION_ERROR", [
-      "Usage: doctl-axi docs troubleshoot <path>",
-    ]);
-  }
-  const docPath = args[0]!.trim();
-  if (args.length > 1) {
-    throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", []);
-  }
-  const allowed = ["path", "excerpt", "title"];
-  const fields = parseFields(fieldsArg, allowed);
-  const { path, excerpt } = await getDoc(docPath, full);
-  const truncated = truncateField(excerpt, full);
-  const titleFromMd = (() => {
-    const m = excerpt.match(/^#\s+(.+)$/m);
-    if (m && m[1]) return m[1].trim();
-    const last = path.split("/").filter(Boolean).pop();
-    return last ? last : path;
-  })();
-  const title = truncateField(titleFromMd, full);
-  const help = ["docs get " + path + " for full page", `docs search "troubleshoot ${path.split("/").filter(Boolean).pop() ?? ""}" --full`];
-  const payload = { ...projectFields([{ path, excerpt: truncated, title }], fields)[0], help };
-  return encode(payload);
+  return fetchDocPage(args, full, fieldsArg, {
+    missingUsage: "Usage: doctl-axi docs troubleshoot <path>",
+    unexpectedHint: [],
+    help: (path) => ["docs get " + path + " for full page", `docs search "troubleshoot ${docBasename(path) ?? ""}" --full`],
+  });
 }
 
 async function handleGetRelated(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
