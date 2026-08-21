@@ -64,21 +64,11 @@ const SUBCOMMANDS = [
   "cdn",
   "reserved-ip",
 ] as const;
-type Sub = typeof SUBCOMMANDS[number];
 const KNOWN_SUBS = new Set<string>(SUBCOMMANDS);
 
 const VERBS = ["list", "get", "create", "delete"] as const;
 const KNOWN_VERBS = new Set<string>(VERBS);
 
-const DOMAIN_FIELDS = ["name", "ttl", "records"];
-const RECORD_FIELDS = ["id", "type", "name", "data", "ttl"];
-const FIREWALL_FIELDS = ["id", "name", "status"];
-const LB_FIELDS = ["id", "name", "region", "status"];
-const VPC_FIELDS = ["id", "name", "region", "ipRange"];
-const PEERING_FIELDS = ["id", "name", "status", "vpcIds"];
-const CDN_FIELDS = ["id", "origin", "endpoint", "ttl"];
-const CERT_FIELDS = ["id", "name", "state", "type"];
-const RIP_FIELDS = ["ip", "region", "dropletId"];
 
 function extractArray(raw: unknown): unknown[] {
   if (Array.isArray(raw)) return raw;
@@ -147,470 +137,220 @@ export async function networkCommand(args: string[], _context: unknown): Promise
   }
 
   const verbArgs = remaining.slice(1);
-  // any help flag among verb args shows help
-  if (verbArgs.includes("--help") || verbArgs.includes("-h")) return NETWORK_HELP;
-
-  switch (sub as Sub) {
-    case "domain":
-      return handleDomain(verb, verbArgs, sub);
-    case "record":
-      return handleRecord(verb, verbArgs, sub);
-    case "certificate":
-      return handleCertificate(verb, verbArgs, sub);
-    case "firewall":
-      return handleFirewall(verb, verbArgs, sub);
-    case "load-balancer":
-      return handleLoadBalancer(verb, verbArgs, sub);
-    case "vpc":
-      return handleVpc(verb, verbArgs, sub);
-    case "peering":
-      return handlePeering(verb, verbArgs, sub);
-    case "cdn":
-      return handleCdn(verb, verbArgs, sub);
-    case "reserved-ip":
-      return handleReservedIp(verb, verbArgs, sub);
-    default:
-      throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
-        `Available: ${SUBCOMMANDS.join(", ")}`,
-      ]);
-  }
+  return handleSubResource(verb as Verb, verbArgs, SUBRESOURCES[sub]);
 }
 
-async function handleDomain(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
-  const args = [...rawArgs];
-  const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) {
-    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`,
-    ]);
-  }
-  const fields = parseFields(fieldsArg, DOMAIN_FIELDS);
-  if (verb === "list") {
-    if (args.length > 0) {
-      throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
-        `Run \`doctl-axi network ${sub} ${verb} --help\``,
-      ]);
-    }
-    const raw = await doctlJson<unknown>(["compute", "domain", "list"], contextFlag);
-    const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network domains";
-    const mapped = arr.map((item) => toNetworkDomainToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    const payload: Record<string, unknown> = {
-      count: `${mapped.length} total`,
-      domains: filtered,
-      help: [`network domain get ${mapped[0].name} for detail`, "doctl-axi network domain list --full for complete fields"],
-    };
-    return encode(payload);
-  }
-  if (verb === "get") {
-    if (args.length === 0) throw new AxiError("Missing domain name for get", "VALIDATION_ERROR", [`Run \`doctl-axi network domain get --help\``]);
-    if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network domain get --help\``]);
-    const domain = args[0];
-    const raw = await doctlJson<unknown>(["compute", "domain", "get", domain], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkDomainToon(item as Record<string, unknown> as never, full);
-    const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields);
-    return encode({ domain: filtered[0], help: ["doctl-axi network domain list --full for complete fields"] });
-  }
-  if (verb === "create") {
-    if (args.length === 0) throw new AxiError("Missing domain name for create", "VALIDATION_ERROR", [`Run \`doctl-axi network domain create --help\``]);
-    const domain = args[0];
-    const extra = args.slice(1);
-    const raw = await doctlJson<unknown>(["compute", "domain", "create", domain, ...extra], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkDomainToon(item as Record<string, unknown> as never, full);
-    return encode({ domain: mapped, help: ["doctl-axi network domain list", "doctl-axi network domain get " + domain + " for detail"] });
-  }
-  if (verb === "delete") {
-    if (args.length === 0) throw new AxiError("Missing domain name for delete", "VALIDATION_ERROR", [`Run \`doctl-axi network domain delete --help\``]);
-    const domain = args[0];
-    // doctl delete requires --force to avoid prompt; add if not present
-    const raw = await doctlDelete<unknown>(["compute", "domain", "delete", domain, "--force"], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", domain, help: ["doctl-axi network domain list"] });
-    return encode({ deleted: domain, help: ["doctl-axi network domain list"] });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
+// The nine network subcommands share one verb surface (list|get|create|delete);
+// they differ only in the doctl path, row mapper, allowed --fields, envelope
+// keys, positional arity, and a few per-sub quirks captured below.
+type Verb = (typeof VERBS)[number];
+
+type SubResourceConfig = {
+  sub: string;
+  /** doctl path segments preceding the verb segment */
+  path: string[];
+  /** allowed --fields values */
+  fields: string[];
+  /** maps a raw doctl record onto its TOON row */
+  toToon: (raw: never, full: boolean) => unknown;
+  /** envelope key for the list payload / every other payload */
+  listKey: string;
+  singularKey: string;
+  /** definitive empty-list output */
+  zeroLine: string;
+  /** [min, max?] positionals per verb; max omitted = unbounded */
+  arity: Partial<Record<Verb, [number, number] | [number]>>;
+  /** exact error message when a verb falls under its minimum positionals */
+  missing: Partial<Record<Verb, string>>;
+  /** contextual help lines appended to envelopes */
+  help: (verb: Verb, positionals: string[], rows: Record<string, unknown>[]) => string[];
+  /** get projects the mapped record through --fields (domain) */
+  projectGet?: boolean;
+  /** get lists the parent's records and matches the id locally (record) */
+  matchById?: boolean;
+  /** delete omits doctl's --force flag (record) */
+  omitForce?: boolean;
+  /** successful delete carries a help line (domain/record/firewall only) */
+  deleteSuccessHelp?: boolean;
+  /** extra payload keys merged into the already-deleted response */
+  alreadyExtra?: (positionals: string[]) => Record<string, unknown>;
+};
+
+// firewall/load-balancer/vpc/peering/cdn/certificate/reserved-ip take a single
+// id positional ("ip" for reserved-ip) and share identical verb behavior.
+function idStyle(
+  sub: string,
+  path: string[],
+  fields: string[],
+  toToon: SubResourceConfig["toToon"],
+  listKey: string,
+  singularKey: string,
+  idNoun: string,
+): SubResourceConfig {
+  return {
+    sub,
+    path,
+    fields,
+    toToon,
+    listKey,
+    singularKey,
+    zeroLine: `0 network ${sub}s`,
+    arity: { list: [0], get: [1], create: [0], delete: [1] },
+    missing: {
+      get: `Missing ${idNoun} for ${sub} get`,
+      delete: `Missing ${idNoun} for ${sub} delete`,
+    },
+    help: (verb) =>
+      verb === "list"
+        ? [`doctl-axi network ${sub} list --full for complete fields`]
+        : verb === "delete"
+          ? [`doctl-axi network ${sub} list`]
+          : [],
+  };
 }
 
-async function handleRecord(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
-  const args = [...rawArgs];
-  const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) {
-    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`,
-    ]);
-  }
-  const fields = parseFields(fieldsArg, RECORD_FIELDS);
-  if (verb === "list") {
-    if (args.length === 0) throw new AxiError("Missing domain for record list", "VALIDATION_ERROR", [`Run \`doctl-axi network record list --help\``]);
-    const domain = args[0];
-    if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network record list --help\``]);
-    const raw = await doctlJson<unknown>(["compute", "domain", "records", "list", domain], contextFlag);
-    const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network records";
-    const mapped = arr.map((item) => toNetworkRecordToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    const payload: Record<string, unknown> = {
-      count: `${mapped.length} total`,
-      records: filtered,
-      help: ["doctl-axi network record list --full for complete fields"],
-    };
-    return encode(payload);
-  }
-  if (verb === "get") {
-    if (args.length < 2) throw new AxiError("Missing arguments for record get: <domain> <record-id>", "VALIDATION_ERROR", [`Run \`doctl-axi network record get --help\``]);
-    const domain = args[0];
-    const id = args[1];
-    // doctl has no `compute domain records get <domain> <id>` verb; fallback to list+filter is the correct contract.
-    // We fetch the domain's records and filter by id locally, returning the matched record or the raw payload if not found.
-    const raw = await doctlJson<unknown>(["compute", "domain", "records", "list", domain], contextFlag);
-    const arr = extractArray(raw);
-    const found = arr.find((it) => {
-      if (it && typeof it === "object" && "id" in (it as Record<string, unknown>)) {
-        const v = (it as Record<string, unknown>)["id"];
-        return String(v) === String(id);
+const SUBRESOURCES: Record<string, SubResourceConfig> = {
+  domain: {
+    sub: "domain",
+    path: ["compute", "domain"],
+    fields: ["name", "ttl", "records"],
+    toToon: toNetworkDomainToon,
+    listKey: "domains",
+    singularKey: "domain",
+    zeroLine: "0 network domains",
+    arity: { list: [0], get: [1, 1], create: [1], delete: [1] },
+    missing: {
+      get: "Missing domain name for get",
+      create: "Missing domain name for create",
+      delete: "Missing domain name for delete",
+    },
+    help: (verb, pos, rows) => {
+      if (verb === "list") {
+        return [`network domain get ${String(rows[0]?.name)} for detail`, "doctl-axi network domain list --full for complete fields"];
       }
-      return false;
-    }) ?? raw;
-    const mapped = toNetworkRecordToon(found as Record<string, unknown> as never, full);
-    return encode({ record: mapped, help: ["doctl-axi network record list " + domain] });
-  }
-  if (verb === "create") {
-    if (args.length === 0) throw new AxiError("Missing domain for record create", "VALIDATION_ERROR", [`Run \`doctl-axi network record create --help\``]);
-    const domain = args[0];
-    const extra = args.slice(1);
-    const raw = await doctlJson<unknown>(["compute", "domain", "records", "create", domain, ...extra], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkRecordToon(item as Record<string, unknown> as never, full);
-    return encode({ record: mapped });
-  }
-  if (verb === "delete") {
-    if (args.length < 2) throw new AxiError("Missing arguments for record delete: <domain> <record-id>", "VALIDATION_ERROR", [`Run \`doctl-axi network record delete --help\``]);
-    const domain = args[0];
-    const id = args[1];
-    const raw = await doctlDelete<unknown>(["compute", "domain", "records", "delete", domain, id], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", record: id, domain, help: ["doctl-axi network record list " + domain] });
-    return encode({ deleted: id, help: ["doctl-axi network record list " + domain] });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
-}
+      if (verb === "get") return ["doctl-axi network domain list --full for complete fields"];
+      if (verb === "create") return ["doctl-axi network domain list", `doctl-axi network domain get ${pos[0]} for detail`];
+      return ["doctl-axi network domain list"];
+    },
+    projectGet: true,
+    deleteSuccessHelp: true,
+  },
+  record: {
+    sub: "record",
+    path: ["compute", "domain", "records"],
+    fields: ["id", "type", "name", "data", "ttl"],
+    toToon: toNetworkRecordToon,
+    listKey: "records",
+    singularKey: "record",
+    zeroLine: "0 network records",
+    arity: { list: [1, 1], get: [2], create: [1], delete: [2] },
+    missing: {
+      list: "Missing domain for record list",
+      get: "Missing arguments for record get: <domain> <record-id>",
+      create: "Missing domain for record create",
+      delete: "Missing arguments for record delete: <domain> <record-id>",
+    },
+    help: (verb, pos) => {
+      if (verb === "list") return ["doctl-axi network record list --full for complete fields"];
+      if (verb === "create") return [];
+      return pos.length > 0 ? [`doctl-axi network record list ${pos[0]}`] : [];
+    },
+    matchById: true,
+    omitForce: true,
+    deleteSuccessHelp: true,
+    alreadyExtra: (pos) => ({ domain: pos[0] }),
+  },
+  certificate: idStyle("certificate", ["compute", "certificate"], ["id", "name", "state", "type"], toNetworkCertificateToon, "certificates", "certificate", "id"),
+  firewall: {
+    ...idStyle("firewall", ["compute", "firewall"], ["id", "name", "status"], toNetworkFirewallToon, "firewalls", "firewall", "id"),
+    deleteSuccessHelp: true,
+  },
+  "load-balancer": idStyle("load-balancer", ["compute", "load-balancer"], ["id", "name", "region", "status"], toNetworkLoadBalancerToon, "load_balancers", "load_balancer", "id"),
+  vpc: idStyle("vpc", ["vpcs"], ["id", "name", "region", "ipRange"], toNetworkVpcToon, "vpcs", "vpc", "id"),
+  peering: idStyle("peering", ["vpcs", "peerings"], ["id", "name", "status", "vpcIds"], toNetworkPeeringToon, "peerings", "peering", "id"),
+  cdn: idStyle("cdn", ["compute", "cdn"], ["id", "origin", "endpoint", "ttl"], toNetworkCdnToon, "cdns", "cdn", "id"),
+  "reserved-ip": idStyle("reserved-ip", ["compute", "reserved-ip"], ["ip", "region", "dropletId"], toNetworkReservedIpToon, "reserved_ips", "reserved_ip", "ip"),
+};
 
-async function handleFirewall(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
+async function handleSubResource(verb: Verb, rawArgs: string[], cfg: SubResourceConfig): Promise<string> {
+  const hint = `Run \`doctl-axi network ${cfg.sub} ${verb} --help\``;
+  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `${hint} for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFields(fieldsArg, FIREWALL_FIELDS);
-  if (verb === "list") {
-    if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
-    const raw = await doctlJson<unknown>(["compute", "firewall", "list"], contextFlag);
-    const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network firewalls";
-    const mapped = arr.map((item) => toNetworkFirewallToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    return encode({ count: `${mapped.length} total`, firewalls: filtered, help: ["doctl-axi network firewall list --full for complete fields"] });
+  if (leftoverFlags.length > 0) {
+    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`${hint} for available flags`]);
   }
-  if (verb === "get") {
-    if (args.length === 0) throw new AxiError("Missing id for firewall get", "VALIDATION_ERROR", [`Run \`doctl-axi network firewall get --help\``]);
-    const id = args[0];
-    const raw = await doctlJson<unknown>(["compute", "firewall", "get", id], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkFirewallToon(item as Record<string, unknown> as never, full);
-    return encode({ firewall: mapped });
-  }
-  if (verb === "create") {
-    const raw = await doctlJson<unknown>(["compute", "firewall", "create", ...args], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkFirewallToon(item as Record<string, unknown> as never, full);
-    return encode({ firewall: mapped });
-  }
-  if (verb === "delete") {
-    if (args.length === 0) throw new AxiError("Missing id for firewall delete", "VALIDATION_ERROR", [`Run \`doctl-axi network firewall delete --help\``]);
-    const id = args[0];
-    const raw = await doctlDelete<unknown>(["compute", "firewall", "delete", id, "--force"], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", firewall: id, help: ["doctl-axi network firewall list"] });
-    return encode({ deleted: id, help: ["doctl-axi network firewall list"] });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
-}
+  const fields = parseFields(fieldsArg, cfg.fields);
 
-async function handleLoadBalancer(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
-  const args = [...rawArgs];
-  const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFields(fieldsArg, LB_FIELDS);
-  if (verb === "list") {
-    if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
-    const raw = await doctlJson<unknown>(["compute", "load-balancer", "list"], contextFlag);
-    const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network load-balancers";
-    const mapped = arr.map((item) => toNetworkLoadBalancerToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    return encode({ count: `${mapped.length} total`, load_balancers: filtered, help: ["doctl-axi network load-balancer list --full for complete fields"] });
+  const [minArgs, maxArgs] = cfg.arity[verb] ?? [0];
+  if (args.length < minArgs) throw new AxiError(cfg.missing[verb]!, "VALIDATION_ERROR", [hint]);
+  if (maxArgs !== undefined && args.length > maxArgs) {
+    throw new AxiError(`Unexpected argument: ${args[maxArgs]}`, "VALIDATION_ERROR", [hint]);
   }
-  if (verb === "get") {
-    if (args.length === 0) throw new AxiError("Missing id for load-balancer get", "VALIDATION_ERROR", [`Run \`doctl-axi network load-balancer get --help\``]);
-    const id = args[0];
-    const raw = await doctlJson<unknown>(["compute", "load-balancer", "get", id], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkLoadBalancerToon(item as Record<string, unknown> as never, full);
-    return encode({ load_balancer: mapped });
-  }
-  if (verb === "create") {
-    const raw = await doctlJson<unknown>(["compute", "load-balancer", "create", ...args], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkLoadBalancerToon(item as Record<string, unknown> as never, full);
-    return encode({ load_balancer: mapped });
-  }
-  if (verb === "delete") {
-    if (args.length === 0) throw new AxiError("Missing id for load-balancer delete", "VALIDATION_ERROR", [`Run \`doctl-axi network load-balancer delete --help\``]);
-    const id = args[0];
-    const raw = await doctlDelete<unknown>(["compute", "load-balancer", "delete", id, "--force"], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", load_balancer: id, help: ["doctl-axi network load-balancer list"] });
-    return encode({ deleted: id });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
-}
 
-async function handleVpc(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
-  const args = [...rawArgs];
-  const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFields(fieldsArg, VPC_FIELDS);
-  if (verb === "list") {
-    if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
-    const raw = await doctlJson<unknown>(["vpcs", "list"], contextFlag);
-    const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network vpcs";
-    const mapped = arr.map((item) => toNetworkVpcToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    return encode({ count: `${mapped.length} total`, vpcs: filtered, help: ["doctl-axi network vpc list --full for complete fields"] });
-  }
-  if (verb === "get") {
-    if (args.length === 0) throw new AxiError("Missing id for vpc get", "VALIDATION_ERROR", [`Run \`doctl-axi network vpc get --help\``]);
-    const id = args[0];
-    const raw = await doctlJson<unknown>(["vpcs", "get", id], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkVpcToon(item as Record<string, unknown> as never, full);
-    return encode({ vpc: mapped });
-  }
-  if (verb === "create") {
-    const raw = await doctlJson<unknown>(["vpcs", "create", ...args], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkVpcToon(item as Record<string, unknown> as never, full);
-    return encode({ vpc: mapped });
-  }
-  if (verb === "delete") {
-    if (args.length === 0) throw new AxiError("Missing id for vpc delete", "VALIDATION_ERROR", [`Run \`doctl-axi network vpc delete --help\``]);
-    const id = args[0];
-    const raw = await doctlDelete<unknown>(["vpcs", "delete", id, "--force"], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", vpc: id, help: ["doctl-axi network vpc list"] });
-    return encode({ deleted: id });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
-}
+  const mapRow = (item: unknown): Record<string, unknown> =>
+    cfg.toToon(item as Record<string, unknown> as never, full) as Record<string, unknown>;
 
-async function handlePeering(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
-  const args = [...rawArgs];
-  const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFields(fieldsArg, PEERING_FIELDS);
   if (verb === "list") {
-    if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
-    const raw = await doctlJson<unknown>(["vpcs", "peerings", "list"], contextFlag);
+    const raw = await doctlJson<unknown>([...cfg.path, "list", ...args], contextFlag);
     const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network peerings";
-    const mapped = arr.map((item) => toNetworkPeeringToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    return encode({ count: `${mapped.length} total`, peerings: filtered, help: ["doctl-axi network peering list --full for complete fields"] });
+    if (arr.length === 0) return cfg.zeroLine;
+    const mapped = arr.map((item) => mapRow(item));
+    const filtered = projectFields(mapped, fields);
+    return encode({ count: `${mapped.length} total`, [cfg.listKey]: filtered, help: cfg.help("list", args, mapped) });
   }
   if (verb === "get") {
-    if (args.length === 0) throw new AxiError("Missing id for peering get", "VALIDATION_ERROR", [`Run \`doctl-axi network peering get --help\``]);
-    const id = args[0];
-    const raw = await doctlJson<unknown>(["vpcs", "peerings", "get", id], contextFlag);
+    if (cfg.matchById) {
+      // doctl has no `compute domain records get <domain> <id>` verb; fetch the
+      // domain's records and match by id locally, returning the matched record
+      // or the raw payload if not found.
+      const [parent, id] = args;
+      const raw = await doctlJson<unknown>([...cfg.path, "list", parent], contextFlag);
+      const arr = extractArray(raw);
+      const found =
+        arr.find((it) => {
+          if (it && typeof it === "object" && "id" in (it as Record<string, unknown>)) {
+            return String((it as Record<string, unknown>)["id"]) === String(id);
+          }
+          return false;
+        }) ?? raw;
+      return encode({ [cfg.singularKey]: mapRow(found), help: cfg.help("get", args, []) });
+    }
+    const raw = await doctlJson<unknown>([...cfg.path, "get", ...args.slice(0, minArgs)], contextFlag);
     const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkPeeringToon(item as Record<string, unknown> as never, full);
-    return encode({ peering: mapped });
+    const mapped = mapRow(arr[0] ?? raw);
+    if (cfg.projectGet) {
+      const filtered = projectFields([mapped], fields)[0];
+      return encode({ [cfg.singularKey]: filtered, help: cfg.help("get", args, [mapped]) });
+    }
+    return encode({ [cfg.singularKey]: mapped });
   }
   if (verb === "create") {
-    const raw = await doctlJson<unknown>(["vpcs", "peerings", "create", ...args], contextFlag);
+    const raw = await doctlJson<unknown>([...cfg.path, "create", ...args], contextFlag);
     const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkPeeringToon(item as Record<string, unknown> as never, full);
-    return encode({ peering: mapped });
+    const mapped = mapRow(arr[0] ?? raw);
+    const help = cfg.help("create", args, [mapped]);
+    return help.length > 0 ? encode({ [cfg.singularKey]: mapped, help }) : encode({ [cfg.singularKey]: mapped });
   }
-  if (verb === "delete") {
-    if (args.length === 0) throw new AxiError("Missing id for peering delete", "VALIDATION_ERROR", [`Run \`doctl-axi network peering delete --help\``]);
-    const id = args[0];
-    const raw = await doctlDelete<unknown>(["vpcs", "peerings", "delete", id, "--force"], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", peering: id, help: ["doctl-axi network peering list"] });
-    return encode({ deleted: id });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
-}
 
-async function handleCdn(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
-  const args = [...rawArgs];
-  const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFields(fieldsArg, CDN_FIELDS);
-  if (verb === "list") {
-    if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
-    const raw = await doctlJson<unknown>(["compute", "cdn", "list"], contextFlag);
-    const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network cdns";
-    const mapped = arr.map((item) => toNetworkCdnToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    return encode({ count: `${mapped.length} total`, cdns: filtered, help: ["doctl-axi network cdn list --full for complete fields"] });
+  // delete
+  const ids = args.slice(0, minArgs);
+  const argv = [...cfg.path, "delete", ...ids];
+  // doctl delete requires --force to avoid prompt; add unless the sub omits it
+  if (!cfg.omitForce) argv.push("--force");
+  const deletedId = ids[ids.length - 1];
+  const raw = await doctlDelete<unknown>(argv, contextFlag);
+  if (raw === null) {
+    return encode({
+      delete: "already_deleted",
+      [cfg.singularKey]: deletedId,
+      ...(cfg.alreadyExtra?.(args) ?? {}),
+      help: cfg.help("delete", args, []),
+    });
   }
-  if (verb === "get") {
-    if (args.length === 0) throw new AxiError("Missing id for cdn get", "VALIDATION_ERROR", [`Run \`doctl-axi network cdn get --help\``]);
-    const id = args[0];
-    const raw = await doctlJson<unknown>(["compute", "cdn", "get", id], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkCdnToon(item as Record<string, unknown> as never, full);
-    return encode({ cdn: mapped });
-  }
-  if (verb === "create") {
-    const raw = await doctlJson<unknown>(["compute", "cdn", "create", ...args], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkCdnToon(item as Record<string, unknown> as never, full);
-    return encode({ cdn: mapped });
-  }
-  if (verb === "delete") {
-    if (args.length === 0) throw new AxiError("Missing id for cdn delete", "VALIDATION_ERROR", [`Run \`doctl-axi network cdn delete --help\``]);
-    const id = args[0];
-    const raw = await doctlDelete<unknown>(["compute", "cdn", "delete", id, "--force"], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", cdn: id, help: ["doctl-axi network cdn list"] });
-    return encode({ deleted: id });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
-}
-
-async function handleCertificate(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
-  const args = [...rawArgs];
-  const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFields(fieldsArg, CERT_FIELDS);
-  if (verb === "list") {
-    if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
-    const raw = await doctlJson<unknown>(["compute", "certificate", "list"], contextFlag);
-    const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network certificates";
-    const mapped = arr.map((item) => toNetworkCertificateToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    return encode({ count: `${mapped.length} total`, certificates: filtered, help: ["doctl-axi network certificate list --full for complete fields"] });
-  }
-  if (verb === "get") {
-    if (args.length === 0) throw new AxiError("Missing id for certificate get", "VALIDATION_ERROR", [`Run \`doctl-axi network certificate get --help\``]);
-    const id = args[0];
-    const raw = await doctlJson<unknown>(["compute", "certificate", "get", id], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkCertificateToon(item as Record<string, unknown> as never, full);
-    return encode({ certificate: mapped });
-  }
-  if (verb === "create") {
-    const raw = await doctlJson<unknown>(["compute", "certificate", "create", ...args], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkCertificateToon(item as Record<string, unknown> as never, full);
-    return encode({ certificate: mapped });
-  }
-  if (verb === "delete") {
-    if (args.length === 0) throw new AxiError("Missing id for certificate delete", "VALIDATION_ERROR", [`Run \`doctl-axi network certificate delete --help\``]);
-    const id = args[0];
-    const raw = await doctlDelete<unknown>(["compute", "certificate", "delete", id, "--force"], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", certificate: id, help: ["doctl-axi network certificate list"] });
-    return encode({ deleted: id });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
-}
-
-async function handleReservedIp(verb: string, rawArgs: string[], sub: string): Promise<string> {
-  rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`);
-  const args = [...rawArgs];
-  const full = takeBoolFlag(args, "--full");
-  const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\` for available flags`]);
-  const fields = parseFields(fieldsArg, RIP_FIELDS);
-  if (verb === "list") {
-    if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [`Run \`doctl-axi network ${sub} ${verb} --help\``]);
-    const raw = await doctlJson<unknown>(["compute", "reserved-ip", "list"], contextFlag);
-    const arr = extractArray(raw);
-    if (arr.length === 0) return "0 network reserved-ips";
-    const mapped = arr.map((item) => toNetworkReservedIpToon(item as Record<string, unknown> as never, full));
-    const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
-    return encode({ count: `${mapped.length} total`, reserved_ips: filtered, help: ["doctl-axi network reserved-ip list --full for complete fields"] });
-  }
-  if (verb === "get") {
-    if (args.length === 0) throw new AxiError("Missing ip for reserved-ip get", "VALIDATION_ERROR", [`Run \`doctl-axi network reserved-ip get --help\``]);
-    const ip = args[0];
-    const raw = await doctlJson<unknown>(["compute", "reserved-ip", "get", ip], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkReservedIpToon(item as Record<string, unknown> as never, full);
-    return encode({ reserved_ip: mapped });
-  }
-  if (verb === "create") {
-    const raw = await doctlJson<unknown>(["compute", "reserved-ip", "create", ...args], contextFlag);
-    const arr = extractArray(raw);
-    const item = arr[0] ?? raw;
-    const mapped = toNetworkReservedIpToon(item as Record<string, unknown> as never, full);
-    return encode({ reserved_ip: mapped });
-  }
-  if (verb === "delete") {
-    if (args.length === 0) throw new AxiError("Missing ip for reserved-ip delete", "VALIDATION_ERROR", [`Run \`doctl-axi network reserved-ip delete --help\``]);
-    const ip = args[0];
-    const raw = await doctlDelete<unknown>(["compute", "reserved-ip", "delete", ip, "--force"], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", reserved_ip: ip, help: ["doctl-axi network reserved-ip list"] });
-    return encode({ deleted: ip });
-  }
-  throw new AxiError(`Unknown verb: ${verb}`, "VALIDATION_ERROR", [`Available: ${VERBS.join(", ")}`]);
+  if (cfg.deleteSuccessHelp) return encode({ deleted: deletedId, help: cfg.help("delete", args, []) });
+  return encode({ deleted: deletedId });
 }
