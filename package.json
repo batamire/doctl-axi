@@ -7,6 +7,10 @@
   "bin": {
     "doctl-axi": "dist/bin/doctl-axi.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/batamire/doctl-axi.git"
+  },
   "files": [
     "dist",
     "skills/doctl-axi",
