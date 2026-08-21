@@ -7,19 +7,6 @@ import { rejectUnknownFlags, takeBoolFlag, takeFlagValue, parseFields } from "..
 const ALLOWED_FLAGS = ["--full", "--fields"];
 
 
-function applyFieldsFilter<T extends Record<string, unknown>>(items: T[], fields: string[] | null): Record<string, unknown>[] {
-  if (!fields || fields.length === 0) return items as unknown as Record<string, unknown>[];
-  const allowed = new Set(fields.map((f) => f.trim()).filter(Boolean));
-  return items.map((item) => {
-    const obj: Record<string, unknown> = {};
-    for (const key of Object.keys(item)) {
-      if (allowed.has(key)) obj[key] = (item as Record<string, unknown>)[key];
-    }
-    return obj;
-  });
-}
-
-
 export const DOCS_HELP = encode({
   command: "docs",
   description: "Search and fetch DigitalOcean documentation (no token required)",
@@ -205,7 +192,7 @@ async function searchLikeDocs(args: string[], full: boolean, fieldsArg: string |
       help: opts.help({ query, args, firstPath: undefined, firstFilteredPath: undefined }),
     });
   }
-  const filtered = applyFieldsFilter(mapped as unknown as Record<string, unknown>[], fields);
+  const filtered = projectFields(mapped as unknown as Record<string, unknown>[], fields);
   return encode({
     count: `${mapped.length} results for "${query}"`,
     results: filtered,

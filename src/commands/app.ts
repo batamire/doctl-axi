@@ -88,12 +88,6 @@ async function appList(rawArgs: string[]): Promise<string> {
   // take optional --spec that may be left? not for list
   takeFlagValue(args, "--spec");
 
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) {
-    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `doctl-axi app list --help` for available flags",
-    ]);
-  }
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
       "Run `doctl-axi app list --help`",
@@ -122,6 +116,7 @@ async function appList(rawArgs: string[]): Promise<string> {
 async function appGet(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app get --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
   const fieldsArg = takeFlagValue(args, "--fields");
@@ -132,9 +127,6 @@ async function appGet(rawArgs: string[]): Promise<string> {
       if (!ALLOWED_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,phase,activeDeployment"]);
     }
   }
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app get --help` for available flags");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get --help`"]);
   const id = args[0];
   if (!id) throw new AxiError("Missing id for app get", "VALIDATION_ERROR", ["Usage: doctl-axi app get <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get --help`"]);
@@ -150,11 +142,10 @@ async function appGet(rawArgs: string[]): Promise<string> {
 async function appCreate(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app create --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
   takeFlagValue(args, "--spec");
-  // also allow --spec=...
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app create --help` for available flags");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app create --help`"]);
   // create may have no positional id; ignore leftover args? but if args remains treat as spec path? ignore
@@ -170,14 +161,13 @@ async function appCreate(rawArgs: string[]): Promise<string> {
 async function appUpdate(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app update --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
   takeFlagValue(args, "--spec");
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app update --help` for available flags");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app update --help`"]);
   const id = args[0];
   if (!id) throw new AxiError("Missing id for app update", "VALIDATION_ERROR", ["Usage: doctl-axi app update <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app update --help`"]);
   const raw = await doctlJson<unknown>(["apps", "update", id], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "app" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).app : raw;
   const mapped = toAppToon((obj ?? {}) as never, full);
@@ -187,10 +177,8 @@ async function appUpdate(rawArgs: string[]): Promise<string> {
 async function appDelete(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   const args = [...rawArgs];
-  const contextFlag = takeFlagValue(args, "--context");
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app delete --help` for available flags");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app delete --help`"]);
+  const contextFlag = takeFlagValue(args, "--context");
   const id = args[0];
   if (!id) throw new AxiError("Missing id for app delete", "VALIDATION_ERROR", ["Usage: doctl-axi app delete <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app delete --help`"]);
@@ -202,18 +190,16 @@ async function appDelete(rawArgs: string[]): Promise<string> {
 async function appListDeployments(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app list-deployments --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app list-deployments --help` for available flags");
   let fields: string[] | null = null;
   if (fieldsArg !== undefined) {
     const req = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
     for (const f of req) if (!ALLOWED_FIELDS_DEPLOY.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,phase,cause,progress"]);
     fields = req;
   }
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app list-deployments --help`"]);
   const id = args[0];
   if (!id) throw new AxiError("Missing id for app list-deployments", "VALIDATION_ERROR", ["Usage: doctl-axi app list-deployments <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app list-deployments --help`"]);
@@ -228,11 +214,9 @@ async function appListDeployments(rawArgs: string[]): Promise<string> {
 async function appGetDeployment(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app get-deployment --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app get-deployment --help` for available flags");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get-deployment --help`"]);
   const appId = args[0];
   const depId = args[1];
   if (!appId || !depId) throw new AxiError("Missing id for app get-deployment", "VALIDATION_ERROR", ["Usage: doctl-axi app get-deployment <app-id> <deployment-id>"]);
@@ -246,11 +230,9 @@ async function appGetDeployment(rawArgs: string[]): Promise<string> {
 async function appCreateDeployment(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app create-deployment --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi app create-deployment --help` for available flags");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi app create-deployment --help`"]);
   const id = args[0];
   if (!id) throw new AxiError("Missing id for app create-deployment", "VALIDATION_ERROR", ["Usage: doctl-axi app create-deployment <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app create-deployment --help`"]);
@@ -264,9 +246,9 @@ async function appLogs(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   // logs accept their own flags (--type, --tail, ...); unknown flags still error
   const args = [...rawArgs];
+  rejectUnknownFlags(args, LOG_FLAGS, "Run `doctl-axi app logs --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  rejectUnknownFlags(args, LOG_FLAGS, "Run `doctl-axi app logs --help` for available flags");
 
   const positional = args.filter((a) => !a.startsWith("-"));
   const appId = positional[0];

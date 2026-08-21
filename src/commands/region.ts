@@ -40,8 +40,6 @@ async function regionList(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
-  const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi region list --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi region list --help`"]);
   const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const raw = await doctlJson<unknown>(["compute", "region", "list"], contextFlag);

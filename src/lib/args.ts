@@ -5,18 +5,24 @@ import { AxiError } from "axi-sdk-js";
  * subcommand has parsed the flags it recognizes. Positionals and
  * `--help`/`-h` always pass; `--` ends flag scanning; `--flag=value` is
  * matched by flag name. Throws VALIDATION_ERROR naming the offending flag
- * plus a one-turn usage hint: never silently drop an unknown flag.
+ * plus a one-turn usage hint: never silently drop an unknown flag, and
+ * never silently accept a repeated flag (`Duplicate flag: <name>`).
  */
 export function rejectUnknownFlags(
   args: string[],
   allowed: string[],
   usageHint: string,
 ): void {
+  const seen = new Set<string>();
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === "--") break;
     if (!arg.startsWith("-")) continue;
-    if (allowed.includes(arg.split("=", 1)[0])) continue;
+    const name = arg.split("=", 1)[0];
+    if (name === "-h" || name === "--help") continue;
+    if (seen.has(name)) throw new AxiError(`Duplicate flag: ${name}`, "VALIDATION_ERROR", [usageHint]);
+    seen.add(name);
+    if (allowed.includes(name)) continue;
     throw new AxiError(`Unknown flag: ${arg}`, "VALIDATION_ERROR", [usageHint]);
   }
 }

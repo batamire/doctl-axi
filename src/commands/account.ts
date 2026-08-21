@@ -30,8 +30,6 @@ async function accountGet(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const contextFlag = takeFlagValue(args, "--context");
   const full = takeBoolFlag(args, "--full");
-  const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi account get --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi account get --help`"]);
   const raw = await doctlJson<unknown>(["account", "get"], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "account" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).account as unknown) : raw;

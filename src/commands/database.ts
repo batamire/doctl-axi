@@ -89,12 +89,6 @@ async function databaseList(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) {
-    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `doctl-axi database list --help` for available flags",
-    ]);
-  }
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi database list --help`"]);
   }
@@ -134,8 +128,6 @@ async function databaseGet(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi database get --help`"]);
   if (args.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database get <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi database get <id>"]);
   const id = args[0];
@@ -175,9 +167,8 @@ async function databaseDelete(rawArgs: string[]): Promise<string> {
   rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi database delete --help` for available flags");
   const args = [...rawArgs];
   const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi database delete --help`"]);
   if (args.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database delete <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi database delete <id>"]);
   const id = args[0];
   const raw = await doctlDelete<unknown>(["databases", "delete", id], contextFlag);
   if (raw === null) return encode({ delete: "already_deleted", database: id, help: ["doctl-axi database list"] });

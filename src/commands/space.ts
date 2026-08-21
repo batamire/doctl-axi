@@ -74,8 +74,7 @@ async function spaceKeyList(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key list --help`"]);
+  if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key list --help`"]);
   const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const raw = await doctlJson<unknown>(["spaces", "keys", "list"], contextFlag);
   const rawArray: unknown[] = unwrapArray(raw, "keys");
@@ -93,11 +92,9 @@ async function spaceKeyList(rawArgs: string[]): Promise<string> {
 async function spaceKeyGet(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return SPACE_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi space key get --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi space key get --help` for available flags");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key get --help`"]);
   const name = args[0];
   if (!name) throw new AxiError("Missing name for space key get", "VALIDATION_ERROR", ["Usage: doctl-axi space key get <name>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key get --help`"]);
@@ -110,13 +107,12 @@ async function spaceKeyGet(rawArgs: string[]): Promise<string> {
 async function spaceKeyCreate(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return SPACE_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi space key create --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi space key create --help` for available flags");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key create --help`"]);
   const name = args[0];
   if (!name) throw new AxiError("Missing name for space key create", "VALIDATION_ERROR", ["Usage: doctl-axi space key create <name>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key create --help`"]);
   const raw = await doctlJson<unknown>(["spaces", "keys", "create", name], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "key" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).key as unknown) : raw;
   const mapped = toSpaceKeyToon(obj as never, full);
@@ -126,8 +122,8 @@ async function spaceKeyCreate(rawArgs: string[]): Promise<string> {
 async function spaceKeyUpdate(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return SPACE_HELP;
   const args = [...rawArgs];
-  const contextFlag = takeFlagValue(args, "--context");
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi space key update --help` for available flags");
+  const contextFlag = takeFlagValue(args, "--context");
   const name = args[0];
   if (!name) throw new AxiError("Missing name for space key update", "VALIDATION_ERROR", ["Usage: doctl-axi space key update <name>"]);
   const raw = await doctlJson<unknown>(["spaces", "keys", "update", name], contextFlag);
@@ -139,8 +135,8 @@ async function spaceKeyUpdate(rawArgs: string[]): Promise<string> {
 async function spaceKeyDelete(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return SPACE_HELP;
   const args = [...rawArgs];
-  const contextFlag = takeFlagValue(args, "--context");
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi space key delete --help` for available flags");
+  const contextFlag = takeFlagValue(args, "--context");
   const name = args[0];
   if (!name) throw new AxiError("Missing name for space key delete", "VALIDATION_ERROR", ["Usage: doctl-axi space key delete <name>"]);
   const raw = await doctlDelete<unknown>(["spaces", "keys", "delete", name], contextFlag);

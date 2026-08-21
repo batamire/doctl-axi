@@ -50,8 +50,6 @@ async function uptimeList(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
-  const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime list --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime list --help`"]);
   const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const raw = await doctlJson<unknown>(["monitoring", "uptime", "list"], contextFlag);
@@ -70,13 +68,12 @@ async function uptimeList(rawArgs: string[]): Promise<string> {
 async function uptimeGet(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return INSIGHT_HELP;
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi insight uptime get --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi insight uptime get --help` for available flags");
-  const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime get --help`"]);
   const id = args[0];
   if (!id) throw new AxiError("Missing id for insight uptime get", "VALIDATION_ERROR", ["Usage: doctl-axi insight uptime get <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime get --help`"]);
   const raw = await doctlJson<unknown>(["monitoring", "uptime", "get", id], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "check" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).check as unknown) : raw;
   const mapped = toInsightToon(obj as never, full);

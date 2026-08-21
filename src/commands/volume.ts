@@ -56,12 +56,6 @@ async function volumeList(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
 
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) {
-    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `doctl-axi volume list --help` for available flags",
-    ]);
-  }
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
       "Run `doctl-axi volume list --help`",
@@ -94,16 +88,9 @@ async function volumeGet(rawArgs: string[]): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return VOLUME_HELP;
   // get expects id positional, flags allowed
   const args = [...rawArgs];
+  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi volume get --help` for available flags");
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  // check unknown flags
-  rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi volume get --help` for available flags");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) {
-    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `doctl-axi volume get --help` for available flags",
-    ]);
-  }
   const id = args[0];
   if (!id) {
     throw new AxiError("Missing id for volume get", "VALIDATION_ERROR", ["Usage: doctl-axi volume get <id>"]);

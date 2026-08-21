@@ -113,8 +113,6 @@ async function registryRepositoryList(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
   const registryFlag = takeFlagValue(args, "--registry");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry repository list --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry repository list --help`"]);
 
   const fields = parseFields(fieldsArg, ALLOWED_REPO_FIELDS);
@@ -175,8 +173,6 @@ async function registryTagGet(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
   const registryFlag = takeFlagValue(args, "--registry");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry tag get --help`"]);
   const repo = args[0];
   const tag = args[1];
   if (!repo || !tag) throw new AxiError("Missing repository or tag for registry tag get", "VALIDATION_ERROR", ["Usage: doctl-axi registry tag get <repository> <tag>"]);
@@ -268,10 +264,9 @@ async function registryGCGet(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection get --help`"]);
   const idOrRegistry = args[0];
   if (!idOrRegistry) throw new AxiError("Missing id for registry garbage-collection get", "VALIDATION_ERROR", ["Usage: doctl-axi registry garbage-collection get <id>"]);
+  if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection get --help`"]);
   // Try fetching list and find by id, fallback to get-active
   const baseArgsList = ["registry", "garbage-collection", "list"];
   // For simplicity, if arg looks like registry name, try get-active
@@ -319,8 +314,6 @@ async function registryGCDelete(rawArgs: string[]): Promise<string> {
   rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi registry garbage-collection delete --help` for available flags");
   const args = [...rawArgs];
   const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection delete --help`"]);
   const id = args[0];
   if (!id) throw new AxiError("Missing id for registry garbage-collection delete", "VALIDATION_ERROR", ["Usage: doctl-axi registry garbage-collection delete <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi registry garbage-collection delete --help`"]);

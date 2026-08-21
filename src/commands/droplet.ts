@@ -95,13 +95,6 @@ async function dropletList(rawArgs: string[]): Promise<string> {
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
 
-  // after extracting known flags, any remaining flags are unknown (already checked), but leftover positional args are invalid
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) {
-    throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [
-      "Run `doctl-axi droplet list --help` for available flags",
-    ]);
-  }
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
       "Run `doctl-axi droplet list --help`",
@@ -169,8 +162,6 @@ async function dropletGet(rawArgs: string[]): Promise<string> {
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
   const contextFlag = takeFlagValue(args, "--context");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi droplet get --help`"]);
   if (args.length === 0) throw new AxiError("Missing droplet id", "VALIDATION_ERROR", ["Usage: doctl-axi droplet get <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi droplet get <id>"]);
   const id = args[0];
@@ -209,8 +200,6 @@ async function dropletDelete(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const contextFlag = takeFlagValue(args, "--context");
   const hasForce = takeBoolFlag(args, "--force");
-  const leftoverFlags = args.filter((a) => a.startsWith("-"));
-  if (leftoverFlags.length > 0) throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi droplet delete --help`"]);
   if (args.length === 0) throw new AxiError("Missing droplet id", "VALIDATION_ERROR", ["Usage: doctl-axi droplet delete <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi droplet delete <id>"]);
   const id = args[0];

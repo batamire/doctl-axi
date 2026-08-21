@@ -30,8 +30,6 @@ async function balanceGet(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const contextFlag = takeFlagValue(args, "--context");
   const full = takeBoolFlag(args, "--full");
-  const leftover = args.filter((a) => a.startsWith("-"));
-  if (leftover.length > 0) throw new AxiError(`Unknown flag: ${leftover[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi balance get --help`"]);
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi balance get --help`"]);
   const raw = await doctlJson<unknown>(["balance", "get"], contextFlag);
   const obj = raw !== null && typeof raw === "object" && "balance" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).balance as unknown) : raw;
