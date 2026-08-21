@@ -16,5 +16,9 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Drift guard must run BEFORE build: `pnpm build` regenerates
+      # skills/doctl-axi/SKILL.md, which would silently repair a stale
+      # committed file and make the check vacuous.
+      - run: pnpm run build:skill -- --check
       - run: pnpm build
       - run: pnpm test

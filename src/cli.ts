@@ -19,6 +19,7 @@ import { appCommand, APP_HELP } from "./commands/app.js";
 import { registryCommand, REGISTRY_HELP } from "./commands/registry.js";
 import { setupCommand, SETUP_HELP } from "./commands/setup.js";
 import { buildDashboardPayload } from "./lib/dashboard.js";
+import { parseContextArgs, type DoctlContext, type ParsedContextArgs } from "./lib/args.js";
 export const DESCRIPTION = "Agent-ergonomic CLI for DigitalOcean — one AXI wrapping doctl → TOON";
 export const TOP_HELP = encode({
   usage: "doctl-axi <command> [args] [flags]",
@@ -86,7 +87,7 @@ const COMMAND_HELP: Record<string, string> = {
   setup: SETUP_HELP,
 };
 
-const COMMANDS: Record<string, (args: string[], ctx: unknown) => Promise<string>> = {
+export const COMMANDS: Record<string, (args: string[], ctx?: DoctlContext) => Promise<string>> = {
   droplet: dropletCommand,
   kubernetes: kubernetesCommand,
   k8s: kubernetesCommand,
@@ -107,6 +108,43 @@ const COMMANDS: Record<string, (args: string[], ctx: unknown) => Promise<string>
   marketplace: marketplaceCommand,
   setup: setupCommand,
 };
+
+// Canonical per-noun command summary shared by TOP_HELP consumers and the
+// generated skill (src/skill.ts) so advertised commands can never drift.
+// The count is derived from COMMANDS (aliases excluded); the noun list and
+// verb summaries are hand-written because they carry detail COMMANDS lacks.
+const SUMMARY_ALIASES = ["k8s", "doks"];
+export const COMMAND_SUMMARY = `commands[${Object.keys(COMMANDS).filter((c) => !SUMMARY_ALIASES.includes(c)).length}]: droplet, kubernetes (alias k8s/doks), database, app, registry, network, volume, nfs, space, account, balance, region, dedicated-inference, insight, marketplace, docs, setup
+  droplet: list/get/create/delete + actions (reboot/resize/snapshot)
+  kubernetes: cluster list/get/create/delete, kubeconfig <id>, node-pool list/get/create/delete
+  database: list/get/create/delete, user/topic/pool/config/firewall
+  app: list/get/create/update/delete, list-deployments/get-deployment/create-deployment/logs
+  registry: repository list, tag list/get, manifest list, garbage-collection list/get/create/delete
+  network: domain/record/certificate/firewall/load-balancer/vpc/peering/cdn/reserved-ip (each list/get/create/delete)
+  volume/nfs/space/account: list/get/create/delete (space is keys only)
+  docs: search <q>, get <path>, find-for-service, get-quickstart, troubleshoot, get-related (fetch llms.txt, no token, 30m cache)
+  setup: hooks, hooks --check`;
+
+type CommandFn = (args: string[], ctx?: DoctlContext) => Promise<string>;
+
+// Strip the global --context flag from args before the subcommand sees them;
+// the resolved context is threaded via runAxiCli's ctx parameter instead of
+// every subcommand parsing --context itself. The SDK hands the SAME args
+// array to resolveContext and the command wrapper, so one WeakMap memo keeps
+// the parse to a single run per invocation.
+const contextParseCache = new WeakMap<string[], ParsedContextArgs>();
+function parsedContextArgs(args: string[]): ParsedContextArgs {
+  let parsed = contextParseCache.get(args);
+  if (!parsed) {
+    parsed = parseContextArgs(args);
+    contextParseCache.set(args, parsed);
+  }
+  return parsed;
+}
+
+function withContext(handler: CommandFn): CommandFn {
+  return (args, ctx) => handler(parsedContextArgs(args).strippedArgs, ctx);
+}
 function getCommandHelp(cmd: string): string | null {
   return COMMAND_HELP[cmd] ?? null;
 }
@@ -123,19 +161,31 @@ function formatError(error: unknown): { output: string; exitCode: number } {
   return { output: `${encode({ error: message, code: "UNKNOWN" })}\n`, exitCode: 1 };
 }
 
-async function homeCommand(): Promise<string> {
-  const payload = await buildDashboardPayload();
+async function homeCommand(args: string[], ctx?: DoctlContext): Promise<string> {
+  const payload = await buildDashboardPayload(ctx?.context);
   return encode(payload);
 }
 
 export async function main(): Promise<void> {
-  await runAxiCli({
-    description: DESCRIPTION,
-    version: VERSION,
-    topLevelHelp: `${TOP_HELP}\n`,
-    commands: COMMANDS,
-    home: homeCommand,
-    getCommandHelp,
-    formatError,
-  });
+  try {
+    await runAxiCli<DoctlContext | undefined>({
+      description: DESCRIPTION,
+      version: VERSION,
+      topLevelHelp: `${TOP_HELP}\n`,
+      commands: Object.fromEntries(Object.entries(COMMANDS).map(([name, handler]) => [name, withContext(handler)])),
+      home: homeCommand,
+      getCommandHelp,
+      formatError,
+      resolveContext: ({ args }) => {
+        const { context } = parsedContextArgs(args);
+        return context !== undefined ? { context } : undefined;
+      },
+    });
+  } catch (error) {
+    // resolveContext runs outside the SDK's own error handling; keep its
+    // failures on the same structured {error,code,help} channel.
+    const { output, exitCode } = formatError(error);
+    process.stdout.write(output);
+    process.exitCode = exitCode;
+  }
 }

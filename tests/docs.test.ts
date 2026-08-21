@@ -3,7 +3,7 @@ import { decode } from "@toon-format/toon";
 import { spawnSync } from "node:child_process";
 import { docsCommand } from "../src/commands/docs.js";
 import { searchDocs, getDoc, clearDocsCache, docsCache, DOCS_BASE, LLMS_TXT_URL } from "../src/lib/docs.js";
-import { TRUNCATION_LIMIT } from "../src/lib/toon.js";
+import { TRUNCATION_LIMIT } from "../src/lib/mappers/common.js";
 
 const BIN = "./dist/bin/doctl-axi.js";
 

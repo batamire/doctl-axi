@@ -1,8 +1,9 @@
 import { AxiError } from "axi-sdk-js";
 import { encode } from "@toon-format/toon";
 import { searchDocs, getDoc, clearDocsCache } from "../lib/docs.js";
-import { projectFields, truncateField } from "../lib/toon.js";
+import { projectFields, truncateField } from "../lib/mappers/common.js";
 import { rejectUnknownFlags, takeBoolFlag, takeFlagValue, parseFields } from "../lib/args.js";
+import { suggest } from "../lib/suggestions.js";
 
 const ALLOWED_FLAGS = ["--full", "--fields"];
 
@@ -214,12 +215,12 @@ async function handleSearch(args: string[], full: boolean, fieldsArg: string | u
     queryOf: (a) => a.join(" ").trim(),
     help: ({ query, firstPath }) =>
       firstPath === undefined
-        ? [`docs search "${query}" --full for complete excerpts`, "docs get /path for full page"]
+        ? [suggest(undefined, `docs search "${query}" --full`, "for complete excerpts"), suggest(undefined, "docs get /path", "for full page")]
         : [
-            `docs get ${firstPath} for full page`,
-            `docs search "${query}" --full`,
-            "docs find-for-service <service> for service docs",
-            "docs get-related /path for related pages",
+            suggest(undefined, `docs get ${firstPath}`, "for full page"),
+            suggest(undefined, `docs search "${query}" --full`),
+            suggest(undefined, "docs find-for-service <service>", "for service docs"),
+            suggest(undefined, "docs get-related /path", "for related pages"),
           ],
   });
 }
@@ -269,7 +270,7 @@ async function handleGet(args: string[], full: boolean, fieldsArg: string | unde
     parseFieldsBeforeArgs: true,
     missingUsage: "Usage: doctl-axi docs get <path> [--full]",
     unexpectedHint: ["Run `doctl-axi docs get --help`"],
-    help: (path) => [`docs search "${docBasename(path) ?? "droplets"}" --full`, "docs get-related " + path + " for related pages", "docs find-for-service <service> for service docs"],
+    help: (path) => [suggest(undefined, `docs search "${docBasename(path) ?? "droplets"}" --full`), suggest(undefined, "docs get-related " + path, "for related pages"), suggest(undefined, "docs find-for-service <service>", "for service docs")],
   });
 }
 
@@ -280,8 +281,8 @@ async function handleFindForService(args: string[], full: boolean, fieldsArg: st
     queryOf: (a) => a.join(" ").trim(),
     help: ({ query, firstPath }) =>
       firstPath === undefined
-        ? [`docs search "${query}" --full`, "docs get /path for full page"]
-        : [`docs get ${firstPath} for full page`, `docs search "${query}" --full`],
+        ? [suggest(undefined, `docs search "${query}" --full`), suggest(undefined, "docs get /path", "for full page")]
+        : [suggest(undefined, `docs get ${firstPath}`, "for full page"), suggest(undefined, `docs search "${query}" --full`)],
   });
 }
 
@@ -289,14 +290,14 @@ async function handleGetQuickstart(args: string[], full: boolean, fieldsArg: str
   return fetchDocPage(args, full, fieldsArg, {
     missingUsage: "Usage: doctl-axi docs get-quickstart <path>",
     unexpectedHint: [],
-    help: (path) => ["docs get " + path + " for full page", `docs search "${docBasename(path) ?? "droplets"}" --full`],
+    help: (path) => [suggest(undefined, "docs get " + path, "for full page"), suggest(undefined, `docs search "${docBasename(path) ?? "droplets"}" --full`)],
   });
 }
 async function handleTroubleshoot(args: string[], full: boolean, fieldsArg: string | undefined): Promise<string> {
   return fetchDocPage(args, full, fieldsArg, {
     missingUsage: "Usage: doctl-axi docs troubleshoot <path>",
     unexpectedHint: [],
-    help: (path) => ["docs get " + path + " for full page", `docs search "troubleshoot ${docBasename(path) ?? ""}" --full`],
+    help: (path) => [suggest(undefined, "docs get " + path, "for full page"), suggest(undefined, `docs search "troubleshoot ${docBasename(path) ?? ""}" --full`)],
   });
 }
 
@@ -313,8 +314,8 @@ async function handleGetRelated(args: string[], full: boolean, fieldsArg: string
       const docPath = args.join(" ").trim();
       const segment = docPath.split("/").filter(Boolean).pop() ?? docPath;
       return firstPath === undefined
-        ? [`docs search "${segment}" --full`, `docs get ${docPath} for full page`]
-        : [`docs get ${firstFilteredPath} for full page`, `docs search "${segment}" --full`];
+        ? [suggest(undefined, `docs search "${segment}" --full`), suggest(undefined, `docs get ${docPath}`, "for full page")]
+        : [suggest(undefined, `docs get ${firstFilteredPath}`, "for full page"), suggest(undefined, `docs search "${segment}" --full`)];
     },
   });
 }

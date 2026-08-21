@@ -1,12 +1,13 @@
+import { suggest } from "../lib/suggestions.js";
 import { AxiError } from "axi-sdk-js";
 import { doctlJson, unwrapArray } from "../lib/doctl.js";
-import { projectFields, toDedicatedInferenceToon } from "../lib/toon.js";
-import { encode } from "@toon-format/toon";
-import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { projectFields } from "../lib/mappers/common.js";
+import { toDedicatedInferenceToon } from "../lib/mappers/dedicated-inference.js";import { encode } from "@toon-format/toon";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue, type DoctlContext } from "../lib/args.js";
 
 const ALLOWED_FIELDS = ["id", "name", "region", "status"];
 
-const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
+const ALLOWED_FLAGS = ["--full", "--fields"];
 
 export const DEDICATED_INFERENCE_HELP = encode({
   command: "dedicated-inference",
@@ -22,7 +23,7 @@ export const DEDICATED_INFERENCE_HELP = encode({
 });
 
 
-export async function dedicatedInferenceCommand(args: string[], _context: unknown): Promise<string> {
+export async function dedicatedInferenceCommand(args: string[], ctx?: DoctlContext): Promise<string> {
   const sub = args[0];
   if (!sub || sub.startsWith("-")) {
     if (sub === "--help" || sub === "-h") return DEDICATED_INFERENCE_HELP;
@@ -32,20 +33,19 @@ export async function dedicatedInferenceCommand(args: string[], _context: unknow
     ]);
   }
   if (sub === "--help" || sub === "-h") return DEDICATED_INFERENCE_HELP;
-  if (sub === "list") return list(args.slice(1));
+  if (sub === "list") return list(args.slice(1), ctx);
   throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", ["Available: list", "Run `doctl-axi dedicated-inference --help`"]);
 }
 
-async function list(rawArgs: string[]): Promise<string> {
+async function list(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DEDICATED_INFERENCE_HELP;
   rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi dedicated-inference list --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi dedicated-inference list --help`"]);
   const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
-  const raw = await doctlJson<unknown>(["dedicated-inference", "list"], contextFlag);
+  const raw = await doctlJson<unknown>(["dedicated-inference", "list"], ctx?.context);
   const rawArray: unknown[] = unwrapArray(raw, "inference", "data");
   if (rawArray.length === 0) return "0 inference";
   const mapped = rawArray.map((item) => toDedicatedInferenceToon(item as never, full));
@@ -54,7 +54,7 @@ async function list(rawArgs: string[]): Promise<string> {
     count: `${mapped.length}`,
     status: `active ${mapped.filter((d) => d.status === "active").length}/${mapped.length}`,
     inference: filtered,
-    help: ["doctl-axi dedicated-inference list --full for complete fields"],
+    help: [suggest(ctx, "doctl-axi dedicated-inference list --full", "for complete fields")],
   };
   return encode(payload);
 }

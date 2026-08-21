@@ -1,23 +1,18 @@
+import { suggest } from "../lib/suggestions.js";
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson } from "../lib/doctl.js";
-import {
-  toDatabasePoolToon,
-  projectFields,
-  toDatabaseTopicToon,
-  toDatabaseToon,
-  toDatabaseUserToon,
-} from "../lib/toon.js";
-import type { DatabasePoolRaw, DatabaseRaw, DatabaseTopicRaw, DatabaseUserRaw } from "../lib/toon.js";
+import { toDatabasePoolToon, toDatabaseTopicToon, toDatabaseToon, toDatabaseUserToon } from "../lib/mappers/database.js";
+import { projectFields } from "../lib/mappers/common.js";
+import type { DatabasePoolRaw, DatabaseRaw, DatabaseTopicRaw, DatabaseUserRaw } from "../lib/mappers/database.js";
 import { encode } from "@toon-format/toon";
-import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue, type DoctlContext } from "../lib/args.js";
 
-const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
+const ALLOWED_FLAGS = ["--full", "--fields"];
 
 // Flags forwarded verbatim to `doctl databases create`, in addition to the
-// locally consumed --full/--context.
+// locally consumed --full.
 const CREATE_ALLOWED_FLAGS = [
   "--full",
-  "--context",
   "--engine",
   "--version",
   "--region",
@@ -60,27 +55,27 @@ export const DATABASE_HELP = encode({
   ],
 });
 
-export async function databaseCommand(args: string[], _context: unknown): Promise<string> {
+export async function databaseCommand(args: string[], ctx?: DoctlContext): Promise<string> {
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
     return DATABASE_HELP;
   }
   const sub = args[0];
-  if (sub === "list") return databaseList(args.slice(1));
-  if (sub === "get") return databaseGet(args.slice(1));
-  if (sub === "create") return databaseCreate(args.slice(1));
-  if (sub === "delete") return databaseDelete(args.slice(1));
-  if (sub === "user") return databaseSubResource(args.slice(1), SUBRESOURCES.user);
-  if (sub === "topic") return databaseSubResource(args.slice(1), SUBRESOURCES.topic);
-  if (sub === "pool") return databaseSubResource(args.slice(1), SUBRESOURCES.pool);
-  if (sub === "config") return databaseConfig(args.slice(1));
-  if (sub === "firewall") return databaseFirewall(args.slice(1));
+  if (sub === "list") return databaseList(args.slice(1), ctx);
+  if (sub === "get") return databaseGet(args.slice(1), ctx);
+  if (sub === "create") return databaseCreate(args.slice(1), ctx);
+  if (sub === "delete") return databaseDelete(args.slice(1), ctx);
+  if (sub === "user") return databaseSubResource(args.slice(1), SUBRESOURCES.user, ctx);
+  if (sub === "topic") return databaseSubResource(args.slice(1), SUBRESOURCES.topic, ctx);
+  if (sub === "pool") return databaseSubResource(args.slice(1), SUBRESOURCES.pool, ctx);
+  if (sub === "config") return databaseConfig(args.slice(1), ctx);
+  if (sub === "firewall") return databaseFirewall(args.slice(1), ctx);
   throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
     "Available: list, get, create, delete, user, topic, pool, config, firewall",
     "Run `doctl-axi database --help`",
   ]);
 }
 
-async function databaseList(rawArgs: string[]): Promise<string> {
+async function databaseList(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
     return DATABASE_HELP;
   }
@@ -88,12 +83,11 @@ async function databaseList(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi database list --help`"]);
   }
   const fields = parseFields(fieldsArg, ["id", "name", "engine", "version", "region", "status"]);
-  const raw = await doctlJson<unknown>(["databases", "list"], contextFlag);
+  const raw = await doctlJson<unknown>(["databases", "list"], ctx?.context);
   const rawArray = Array.isArray(raw) ? raw : [];
   if (rawArray.length === 0) {
     return "0 databases";
@@ -116,18 +110,17 @@ async function databaseList(rawArgs: string[]): Promise<string> {
     count: `${mapped.length} total`,
     engine: engineLine,
     databases: filtered,
-    help: [`database get ${mapped[0].id} for detail`, "doctl-axi database list --full"],
+    help: [suggest(ctx, `database get ${mapped[0].id}`, "for detail"), suggest(ctx, "database list --full")],
   };
   return encode(payload);
 }
 
-async function databaseGet(rawArgs: string[]): Promise<string> {
+async function databaseGet(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
   rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi database get --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
   if (args.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database get <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi database get <id>"]);
   const id = args[0];
@@ -138,41 +131,39 @@ async function databaseGet(rawArgs: string[]): Promise<string> {
     for (const f of requested) if (!allowed.has(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,engine,version,region,status"]);
     fields = requested;
   }
-  const raw = await doctlJson<unknown>(["databases", "get", id], contextFlag);
+  const raw = await doctlJson<unknown>(["databases", "get", id], ctx?.context);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
   if (!rec || typeof rec !== "object") throw new AxiError(`Database ${id} not found`, "NOT_FOUND", []);
   const mapped = toDatabaseToon(rec as unknown as DatabaseRaw, full);
   const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
-  return encode({ database: filtered, help: ["doctl-axi database list --full"] });
+  return encode({ database: filtered, help: [suggest(ctx, "doctl-axi database list --full")] });
 }
 
-async function databaseCreate(rawArgs: string[]): Promise<string> {
+async function databaseCreate(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
   rejectUnknownFlags(rawArgs, CREATE_ALLOWED_FLAGS, "Run `doctl-axi database create --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
-  const contextFlag = takeFlagValue(args, "--context");
   if (args.length === 0) throw new AxiError("Missing database name", "VALIDATION_ERROR", ["Usage: doctl-axi database create <name> [flags]"]);
   const name = args[0];
   const rest = args.slice(1);
-  const raw = await doctlJson<unknown>(["databases", "create", name, ...rest], contextFlag);
+  const raw = await doctlJson<unknown>(["databases", "create", name, ...rest], ctx?.context);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-  if (!rec || typeof rec !== "object") return encode({ result: raw, help: ["doctl-axi database list"] });
+  if (!rec || typeof rec !== "object") return encode({ result: raw, help: [suggest(ctx, "doctl-axi database list")] });
   const mapped = toDatabaseToon(rec as unknown as DatabaseRaw, full);
-  return encode({ database: mapped as unknown as Record<string, unknown>, help: ["doctl-axi database list"] });
+  return encode({ database: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi database list")] });
 }
 
-async function databaseDelete(rawArgs: string[]): Promise<string> {
+async function databaseDelete(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
   rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi database delete --help` for available flags");
   const args = [...rawArgs];
-  const contextFlag = takeFlagValue(args, "--context");
   if (args.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database delete <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi database delete <id>"]);
   const id = args[0];
-  const raw = await doctlDelete<unknown>(["databases", "delete", id], contextFlag);
-  if (raw === null) return encode({ delete: "already_deleted", database: id, help: ["doctl-axi database list"] });
-  return encode({ deleted: id, help: ["doctl-axi database list"] });
+  const raw = await doctlDelete<unknown>(["databases", "delete", id], ctx?.context);
+  if (raw === null) return encode({ delete: "already_deleted", database: id, help: [suggest(ctx, "doctl-axi database list")] });
+  return encode({ deleted: id, help: [suggest(ctx, "doctl-axi database list")] });
 }
 
 // Generic helpers for sub-resources
@@ -180,11 +171,11 @@ async function databaseDelete(rawArgs: string[]): Promise<string> {
 function takeSubActionArgs(
   rawArgs: string[],
   allowedFields?: string[],
+  ctx?: DoctlContext,
 ): { action: string; remaining: string[]; full: boolean; contextFlag?: string; fields?: string[] } | null {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return null;
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
-  const contextFlag = takeFlagValue(args, "--context");
   // Verbs whose output is a mapped record pass `allowedFields` and get
   // --fields honored; every other verb rejects --fields outright.
   let fields: string[] | undefined;
@@ -200,7 +191,7 @@ function takeSubActionArgs(
   if (args.length === 0) throw new AxiError("Missing action", "VALIDATION_ERROR", ["Available: list, get, create, delete"]);
   const action = args[0];
   const remaining = args.slice(1);
-  return { action, remaining, full, contextFlag, fields };
+  return { action, remaining, full, contextFlag: ctx?.context, fields };
 }
 
 // user/topic/pool share one verb surface (list|get|create|delete); they differ
@@ -234,11 +225,11 @@ const SUBRESOURCES: Record<string, SubResourceConfig> = {
   },
 };
 
-async function databaseSubResource(rawArgs: string[], cfg: SubResourceConfig): Promise<string> {
+async function databaseSubResource(rawArgs: string[], cfg: SubResourceConfig, ctx?: DoctlContext): Promise<string> {
   const { verb, plural, fields: allowedFields, toToon } = cfg;
   const Noun = verb[0].toUpperCase() + verb.slice(1);
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
-  const parsed = takeSubActionArgs(rawArgs, allowedFields);
+  const parsed = takeSubActionArgs(rawArgs, allowedFields, ctx);
   if (parsed === null) return DATABASE_HELP;
   const { action, remaining, full, contextFlag, fields } = parsed;
   if (action === "list") {
@@ -249,7 +240,7 @@ async function databaseSubResource(rawArgs: string[], cfg: SubResourceConfig): P
     if (arr.length === 0) return `0 ${plural}`;
     const mapped = arr.map((item) => toToon(item, full));
     const rows = projectFields(mapped, fields ?? null);
-    return encode({ count: `${mapped.length} total`, [plural]: rows, help: [`doctl-axi database ${verb} list --full`] });
+    return encode({ count: `${mapped.length} total`, [plural]: rows, help: [suggest(ctx, `doctl-axi database ${verb} list --full`)] });
   }
   if (action === "get") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", [`Usage: doctl-axi database ${verb} get <db-id> <${verb}>`]);
@@ -257,7 +248,7 @@ async function databaseSubResource(rawArgs: string[], cfg: SubResourceConfig): P
     const raw = await doctlJson<unknown>(["databases", verb, "get", remaining[0], remaining[1]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
     if (!rec || typeof rec !== "object") throw new AxiError(`${Noun} ${remaining[1]} not found`, "NOT_FOUND", []);
-    return encode({ [verb]: toToon(rec, full), help: [`doctl-axi database ${verb} list`] });
+    return encode({ [verb]: toToon(rec, full), help: [suggest(ctx, `doctl-axi database ${verb} list`)] });
   }
   if (action === "create") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", [`Usage: doctl-axi database ${verb} create <db-id> <${verb}>`]);
@@ -265,47 +256,47 @@ async function databaseSubResource(rawArgs: string[], cfg: SubResourceConfig): P
     const raw = await doctlJson<unknown>(["databases", verb, "create", remaining[0], remaining[1]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
     if (!rec || typeof rec !== "object") throw new AxiError(`${Noun} create failed: unexpected doctl output`, "VALIDATION_ERROR", [`doctl-axi database ${verb} list`]);
-    return encode({ [verb]: toToon(rec, full), help: [`doctl-axi database ${verb} list`] });
+    return encode({ [verb]: toToon(rec, full), help: [suggest(ctx, `doctl-axi database ${verb} list`)] });
   }
   if (action === "delete") {
     if (remaining.length < 2) throw new AxiError("Missing arguments", "VALIDATION_ERROR", [`Usage: doctl-axi database ${verb} delete <db-id> <${verb}>`]);
     rejectUnknownFlags(remaining.slice(2), [], `Run \`doctl-axi database ${verb} delete --help\` for available flags`);
     const raw = await doctlDelete<unknown>(["databases", verb, "delete", remaining[0], remaining[1]], contextFlag);
-    if (raw === null) return encode({ delete: "already_deleted", [verb]: remaining[1], database: remaining[0], help: [`doctl-axi database ${verb} list`] });
-    return encode({ deleted: remaining[1], help: [`doctl-axi database ${verb} list`] });
+    if (raw === null) return encode({ delete: "already_deleted", [verb]: remaining[1], database: remaining[0], help: [suggest(ctx, `doctl-axi database ${verb} list`)] });
+    return encode({ deleted: remaining[1], help: [suggest(ctx, `doctl-axi database ${verb} list`)] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: list, get, create, delete"]);
 }
 
-async function databaseConfig(rawArgs: string[]): Promise<string> {
+async function databaseConfig(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
-  const parsed = takeSubActionArgs(rawArgs);
+  const parsed = takeSubActionArgs(rawArgs, undefined, ctx);
   if (parsed === null) return DATABASE_HELP;
   const { action, remaining, contextFlag } = parsed;
   if (action === "get" || action === "list" || action === "show") {
     if (remaining.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database config get <db-id>"]);
     const raw = await doctlJson<unknown>(["databases", "configuration", "list", remaining[0]], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as unknown;
-    return encode({ config: rec, help: ["doctl-axi database config get <id>"] });
+    return encode({ config: rec, help: [suggest(ctx, "doctl-axi database config get <id>")] });
   }
   if (action === "update" || action === "set") {
     if (remaining.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database config update <db-id>"]);
     const raw = await doctlJson<unknown>(["databases", "configuration", "update", ...remaining], contextFlag);
-    return encode({ config: raw, help: ["doctl-axi database config get"] });
+    return encode({ config: raw, help: [suggest(ctx, "doctl-axi database config get")] });
   }
   // allow "list" implied if no action but id provided? handle direct id case
   if (remaining.length === 0 && action && !["list", "get", "show", "update", "set"].includes(action)) {
     // treat action as id for get
     const raw = await doctlJson<unknown>(["databases", "configuration", "list", action], contextFlag);
     const rec = (Array.isArray(raw) ? raw[0] : raw) as unknown;
-    return encode({ config: rec, help: ["doctl-axi database config get <id>"] });
+    return encode({ config: rec, help: [suggest(ctx, "doctl-axi database config get <id>")] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: get, update"]);
 }
 
-async function databaseFirewall(rawArgs: string[]): Promise<string> {
+async function databaseFirewall(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DATABASE_HELP;
-  const parsed = takeSubActionArgs(rawArgs);
+  const parsed = takeSubActionArgs(rawArgs, undefined, ctx);
   if (parsed === null) return DATABASE_HELP;
   const { action, remaining, contextFlag } = parsed;
   if (action === "list" || action === "get") {
@@ -318,19 +309,19 @@ async function databaseFirewall(rawArgs: string[]): Promise<string> {
     if ("rules" in rec && Array.isArray(rec["rules"])) {
       const rules = rec["rules"] as unknown[];
       if (rules.length === 0) return "0 firewalls";
-      return encode({ count: `${rules.length} total`, firewalls: rules, help: ["doctl-axi database firewall list --full"] });
+      return encode({ count: `${rules.length} total`, firewalls: rules, help: [suggest(ctx, "doctl-axi database firewall list --full")] });
     }
-    return encode({ count: `${arr.length} total`, firewalls: arr, help: ["doctl-axi database firewall list --full"] });
+    return encode({ count: `${arr.length} total`, firewalls: arr, help: [suggest(ctx, "doctl-axi database firewall list --full")] });
   }
   if (action === "update" || action === "append" || action === "set") {
     if (remaining.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database firewall update <db-id>"]);
     const raw = await doctlJson<unknown>(["databases", "firewall", "update", ...remaining], contextFlag);
-    return encode({ firewall: raw, help: ["doctl-axi database firewall list"] });
+    return encode({ firewall: raw, help: [suggest(ctx, "doctl-axi database firewall list")] });
   }
   if (action === "create" || action === "add") {
     if (remaining.length === 0) throw new AxiError("Missing database id", "VALIDATION_ERROR", ["Usage: doctl-axi database firewall create <db-id>"]);
     const raw = await doctlJson<unknown>(["databases", "firewall", "append", remaining[0], ...remaining.slice(1)], contextFlag);
-    return encode({ firewall: raw, help: ["doctl-axi database firewall list"] });
+    return encode({ firewall: raw, help: [suggest(ctx, "doctl-axi database firewall list")] });
   }
   throw new AxiError(`Unknown subcommand: ${action}`, "VALIDATION_ERROR", ["Available: list, get, update"]);
 }

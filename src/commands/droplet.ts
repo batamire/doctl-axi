@@ -1,16 +1,17 @@
+import { suggest } from "../lib/suggestions.js";
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson } from "../lib/doctl.js";
-import { projectFields, toDropletDetailToon, toDropletToon, type DropletDetailRaw, type DropletRaw } from "../lib/toon.js";
+import { projectFields } from "../lib/mappers/common.js";
+import { toDropletDetailToon, toDropletToon, type DropletDetailRaw, type DropletRaw } from "../lib/mappers/droplet.js";
 import { encode } from "@toon-format/toon";
-import { rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { rejectUnknownFlags, takeBoolFlag, takeFlagValue, type DoctlContext } from "../lib/args.js";
 
-const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
+const ALLOWED_FLAGS = ["--full", "--fields"];
 
 // Flags forwarded verbatim to `doctl compute droplet create`, in addition to
-// the locally consumed --full/--context.
+// the locally consumed --full.
 const CREATE_ALLOWED_FLAGS = [
   "--full",
-  "--context",
   "--region",
   "--size",
   "--image",
@@ -64,7 +65,7 @@ export const DROPLET_HELP = encode({
   ],
 });
 
-export async function dropletCommand(args: string[], _context: unknown): Promise<string> {
+export async function dropletCommand(args: string[], ctx?: DoctlContext): Promise<string> {
   const sub = args[0];
   if (!sub || sub.startsWith("-")) {
     throw new AxiError("Missing subcommand for droplet", "VALIDATION_ERROR", [
@@ -72,11 +73,11 @@ export async function dropletCommand(args: string[], _context: unknown): Promise
       "Run `doctl-axi droplet --help`",
     ]);
   }
-  if (sub === "list") return dropletList(args.slice(1));
-  if (sub === "get") return dropletGet(args.slice(1));
-  if (sub === "create") return dropletCreate(args.slice(1));
-  if (sub === "delete") return dropletDelete(args.slice(1));
-  if (sub in DROPLET_ACTIONS) return dropletAction(args);
+  if (sub === "list") return dropletList(args.slice(1), ctx);
+  if (sub === "get") return dropletGet(args.slice(1), ctx);
+  if (sub === "create") return dropletCreate(args.slice(1), ctx);
+  if (sub === "delete") return dropletDelete(args.slice(1), ctx);
+  if (sub in DROPLET_ACTIONS) return dropletAction(args, ctx);
   throw new AxiError(`Unknown subcommand: ${sub}`, "VALIDATION_ERROR", [
     `Available: ${AVAILABLE}`,
     `Available actions: ${Object.keys(DROPLET_ACTIONS).join(", ")}`,
@@ -84,7 +85,7 @@ export async function dropletCommand(args: string[], _context: unknown): Promise
   ]);
 }
 
-async function dropletList(rawArgs: string[]): Promise<string> {
+async function dropletList(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
     return DROPLET_HELP;
   }
@@ -93,7 +94,6 @@ async function dropletList(rawArgs: string[]): Promise<string> {
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
 
   if (args.length > 0) {
     throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", [
@@ -125,7 +125,7 @@ async function dropletList(rawArgs: string[]): Promise<string> {
   }
 
   // Call doctl
-  const raw = await doctlJson<unknown[]>("compute droplet list".split(" "), contextFlag);
+  const raw = await doctlJson<unknown[]>("compute droplet list".split(" "), ctx?.context);
 
   // doctl list returns array
   const rawArray = Array.isArray(raw) ? raw : [];
@@ -146,7 +146,7 @@ async function dropletList(rawArgs: string[]): Promise<string> {
     count: `${mapped.length}`,
     status: `active ${active}/${mapped.length}`,
     droplets: filteredForEncode,
-    help: [`droplet get ${mapped[0].id} for detail`, "doctl-axi droplet list --full for complete fields"],
+    help: [suggest(ctx, `droplet get ${mapped[0].id}`, "for detail"), suggest(ctx, "droplet list --full", "for complete fields")],
   };
 
   return encode(payload);
@@ -154,13 +154,12 @@ async function dropletList(rawArgs: string[]): Promise<string> {
 
 const GET_FIELDS = ["id", "name", "region", "size", "status", "memory", "vcpus", "disk"];
 
-async function dropletGet(rawArgs: string[]): Promise<string> {
+async function dropletGet(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DROPLET_HELP;
   rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, "Run `doctl-axi droplet get --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
   if (args.length === 0) throw new AxiError("Missing droplet id", "VALIDATION_ERROR", ["Usage: doctl-axi droplet get <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi droplet get <id>"]);
   const id = args[0];
@@ -170,34 +169,32 @@ async function dropletGet(rawArgs: string[]): Promise<string> {
     for (const f of requested) if (!GET_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", [`Available: ${GET_FIELDS.join(",")}`]);
     fields = requested;
   }
-  const raw = await doctlJson<unknown>(["compute", "droplet", "get", id], contextFlag);
+  const raw = await doctlJson<unknown>(["compute", "droplet", "get", id], ctx?.context);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
   const mapped = toDropletDetailToon(rec as unknown as DropletDetailRaw, full);
   const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
-  return encode({ droplet: filtered, help: ["doctl-axi droplet list"] });
+  return encode({ droplet: filtered, help: [suggest(ctx, "doctl-axi droplet list")] });
 }
 
-async function dropletCreate(rawArgs: string[]): Promise<string> {
+async function dropletCreate(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DROPLET_HELP;
   rejectUnknownFlags(rawArgs, CREATE_ALLOWED_FLAGS, "Run `doctl-axi droplet create --help` for available flags");
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
-  const contextFlag = takeFlagValue(args, "--context");
   if (args.length === 0) throw new AxiError("Missing droplet name", "VALIDATION_ERROR", ["Usage: doctl-axi droplet create <name> [flags]"]);
   const name = args[0];
   const rest = args.slice(1);
-  const raw = await doctlJson<unknown>(["compute", "droplet", "create", name, ...rest], contextFlag);
+  const raw = await doctlJson<unknown>(["compute", "droplet", "create", name, ...rest], ctx?.context);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-  if (!rec || typeof rec !== "object") return encode({ result: raw, help: ["doctl-axi droplet list"] });
+  if (!rec || typeof rec !== "object") return encode({ result: raw, help: [suggest(ctx, "doctl-axi droplet list")] });
   const mapped = toDropletToon(rec as unknown as DropletRaw, full);
-  return encode({ droplet: mapped as unknown as Record<string, unknown>, help: ["doctl-axi droplet list"] });
+  return encode({ droplet: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi droplet list")] });
 }
 
-async function dropletDelete(rawArgs: string[]): Promise<string> {
+async function dropletDelete(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return DROPLET_HELP;
-  rejectUnknownFlags(rawArgs, ["--context", "--force"], "Run `doctl-axi droplet delete --help` for available flags");
+  rejectUnknownFlags(rawArgs, ["--force"], "Run `doctl-axi droplet delete --help` for available flags");
   const args = [...rawArgs];
-  const contextFlag = takeFlagValue(args, "--context");
   const hasForce = takeBoolFlag(args, "--force");
   if (args.length === 0) throw new AxiError("Missing droplet id", "VALIDATION_ERROR", ["Usage: doctl-axi droplet delete <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Usage: doctl-axi droplet delete <id>"]);
@@ -205,12 +202,12 @@ async function dropletDelete(rawArgs: string[]): Promise<string> {
   const base = ["compute", "droplet", "delete", id];
   // doctl prompts for confirmation unless --force is passed; never hang.
   if (!hasForce) base.push("--force");
-  const raw = await doctlDelete<unknown>(base, contextFlag);
-  if (raw === null) return encode({ delete: "already_deleted", droplet: id, help: ["doctl-axi droplet list"] });
-  return encode({ deleted: id, help: ["doctl-axi droplet list"] });
+  const raw = await doctlDelete<unknown>(base, ctx?.context);
+  if (raw === null) return encode({ delete: "already_deleted", droplet: id, help: [suggest(ctx, "doctl-axi droplet list")] });
+  return encode({ deleted: id, help: [suggest(ctx, "doctl-axi droplet list")] });
 }
 
-async function dropletAction(rawArgs: string[]): Promise<string> {
+async function dropletAction(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   const action = rawArgs[0];
   const spec = action !== undefined ? DROPLET_ACTIONS[action] : undefined;
   if (!spec) {
@@ -221,10 +218,9 @@ async function dropletAction(rawArgs: string[]): Promise<string> {
   }
   const rest = rawArgs.slice(1);
   if (rest.includes("--help") || rest.includes("-h")) return DROPLET_HELP;
-  const allowed = ["--context", ...(spec.required ? [spec.required] : []), ...spec.allowed];
+  const allowed = [...(spec.required ? [spec.required] : []), ...spec.allowed];
   rejectUnknownFlags(rest, allowed, `Run \`doctl-axi droplet ${action} --help\` for available flags`);
   const args = [...rest];
-  const contextFlag = takeFlagValue(args, "--context");
   // Consume every flag the action spec declares so they don't trip the
   // positional checks below, collecting them verbatim for doctl.
   const forwardedFlags: string[] = [];
@@ -248,7 +244,7 @@ async function dropletAction(rawArgs: string[]): Promise<string> {
       `Usage: doctl-axi droplet ${action} <id> ${spec.required} <value>`,
     ]);
   }
-  const raw = await doctlJson<unknown>(["compute", "droplet-action", action, id, ...forwardedFlags], contextFlag);
+  const raw = await doctlJson<unknown>(["compute", "droplet-action", action, id, ...forwardedFlags], ctx?.context);
   const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown> | undefined;
   const payload: Record<string, unknown> = {
     action: rec && typeof rec === "object" && typeof rec.type === "string" ? rec.type : action,

@@ -1,21 +1,12 @@
 import { AxiError } from "axi-sdk-js";
 import { doctlDelete, doctlJson } from "../lib/doctl.js";
-import {
-  toNetworkDomainToon,
-  toNetworkRecordToon,
-  toNetworkFirewallToon,
-  toNetworkLoadBalancerToon,
-  toNetworkVpcToon,
-  toNetworkPeeringToon,
-  toNetworkCdnToon,
-  toNetworkCertificateToon,
-  toNetworkReservedIpToon,
-} from "../lib/toon.js";
-import { projectFields } from "../lib/toon.js";
+import { toNetworkDomainToon, toNetworkRecordToon, toNetworkFirewallToon, toNetworkLoadBalancerToon, toNetworkVpcToon, toNetworkPeeringToon, toNetworkCdnToon, toNetworkCertificateToon, toNetworkReservedIpToon } from "../lib/mappers/network.js";
+import { projectFields } from "../lib/mappers/common.js";
 import { encode } from "@toon-format/toon";
-import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue } from "../lib/args.js";
+import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue, type DoctlContext } from "../lib/args.js";
+import { suggest } from "../lib/suggestions.js";
 
-const ALLOWED_FLAGS = ["--full", "--fields", "--context"];
+const ALLOWED_FLAGS = ["--full", "--fields"];
 
 
 export const NETWORK_HELP = encode({
@@ -87,7 +78,7 @@ function extractArray(raw: unknown): unknown[] {
 }
 
 
-export async function networkCommand(args: string[], _context: unknown): Promise<string> {
+export async function networkCommand(args: string[], ctx?: DoctlContext): Promise<string> {
   if (args.length === 0) {
     throw new AxiError("Missing subcommand for network", "VALIDATION_ERROR", [
       `Available: ${SUBCOMMANDS.join(", ")}`,
@@ -137,7 +128,7 @@ export async function networkCommand(args: string[], _context: unknown): Promise
   }
 
   const verbArgs = remaining.slice(1);
-  return handleSubResource(verb as Verb, verbArgs, SUBRESOURCES[sub]);
+  return handleSubResource(verb as Verb, verbArgs, SUBRESOURCES[sub], ctx);
 }
 
 // The nine network subcommands share one verb surface (list|get|create|delete);
@@ -163,7 +154,7 @@ type SubResourceConfig = {
   /** exact error message when a verb falls under its minimum positionals */
   missing: Partial<Record<Verb, string>>;
   /** contextual help lines appended to envelopes */
-  help: (verb: Verb, positionals: string[], rows: Record<string, unknown>[]) => string[];
+  help: (verb: Verb, positionals: string[], rows: Record<string, unknown>[], ctx?: DoctlContext) => string[];
   /** get projects the mapped record through --fields (domain) */
   projectGet?: boolean;
   /** get lists the parent's records and matches the id locally (record) */
@@ -200,11 +191,11 @@ function idStyle(
       get: `Missing ${idNoun} for ${sub} get`,
       delete: `Missing ${idNoun} for ${sub} delete`,
     },
-    help: (verb) =>
+    help: (verb, _pos, _rows, ctx) =>
       verb === "list"
-        ? [`doctl-axi network ${sub} list --full for complete fields`]
+        ? [suggest(ctx, `network ${sub} list --full`, "for complete fields")]
         : verb === "delete"
-          ? [`doctl-axi network ${sub} list`]
+          ? [suggest(ctx, `network ${sub} list`)]
           : [],
   };
 }
@@ -224,13 +215,13 @@ const SUBRESOURCES: Record<string, SubResourceConfig> = {
       create: "Missing domain name for create",
       delete: "Missing domain name for delete",
     },
-    help: (verb, pos, rows) => {
+    help: (verb, pos, rows, ctx) => {
       if (verb === "list") {
-        return [`network domain get ${String(rows[0]?.name)} for detail`, "doctl-axi network domain list --full for complete fields"];
+        return [suggest(ctx, `network domain get ${String(rows[0]?.name)}`, "for detail"), suggest(ctx, "network domain list --full", "for complete fields")];
       }
-      if (verb === "get") return ["doctl-axi network domain list --full for complete fields"];
-      if (verb === "create") return ["doctl-axi network domain list", `doctl-axi network domain get ${pos[0]} for detail`];
-      return ["doctl-axi network domain list"];
+      if (verb === "get") return [suggest(ctx, "network domain list --full", "for complete fields")];
+      if (verb === "create") return [suggest(ctx, "network domain list"), suggest(ctx, `network domain get ${pos[0]}`, "for detail")];
+      return [suggest(ctx, "network domain list")];
     },
     projectGet: true,
     deleteSuccessHelp: true,
@@ -250,10 +241,10 @@ const SUBRESOURCES: Record<string, SubResourceConfig> = {
       create: "Missing domain for record create",
       delete: "Missing arguments for record delete: <domain> <record-id>",
     },
-    help: (verb, pos) => {
-      if (verb === "list") return ["doctl-axi network record list --full for complete fields"];
+    help: (verb, pos, _rows, ctx) => {
+      if (verb === "list") return [suggest(ctx, "network record list --full", "for complete fields")];
       if (verb === "create") return [];
-      return pos.length > 0 ? [`doctl-axi network record list ${pos[0]}`] : [];
+      return pos.length > 0 ? [suggest(ctx, `network record list ${pos[0]}`)] : [];
     },
     matchById: true,
     omitForce: true,
@@ -272,13 +263,12 @@ const SUBRESOURCES: Record<string, SubResourceConfig> = {
   "reserved-ip": idStyle("reserved-ip", ["compute", "reserved-ip"], ["ip", "region", "dropletId"], toNetworkReservedIpToon, "reserved_ips", "reserved_ip", "ip"),
 };
 
-async function handleSubResource(verb: Verb, rawArgs: string[], cfg: SubResourceConfig): Promise<string> {
+async function handleSubResource(verb: Verb, rawArgs: string[], cfg: SubResourceConfig, ctx?: DoctlContext): Promise<string> {
   const hint = `Run \`doctl-axi network ${cfg.sub} ${verb} --help\``;
   rejectUnknownFlags(rawArgs, ALLOWED_FLAGS, `${hint} for available flags`);
   const args = [...rawArgs];
   const full = takeBoolFlag(args, "--full");
   const fieldsArg = takeFlagValue(args, "--fields");
-  const contextFlag = takeFlagValue(args, "--context");
   const leftoverFlags = args.filter((a) => a.startsWith("-"));
   if (leftoverFlags.length > 0) {
     throw new AxiError(`Unknown flag: ${leftoverFlags[0]}`, "VALIDATION_ERROR", [`${hint} for available flags`]);
@@ -295,12 +285,12 @@ async function handleSubResource(verb: Verb, rawArgs: string[], cfg: SubResource
     cfg.toToon(item as Record<string, unknown> as never, full) as Record<string, unknown>;
 
   if (verb === "list") {
-    const raw = await doctlJson<unknown>([...cfg.path, "list", ...args], contextFlag);
+    const raw = await doctlJson<unknown>([...cfg.path, "list", ...args], ctx?.context);
     const arr = extractArray(raw);
     if (arr.length === 0) return cfg.zeroLine;
     const mapped = arr.map((item) => mapRow(item));
     const filtered = projectFields(mapped, fields);
-    return encode({ count: `${mapped.length} total`, [cfg.listKey]: filtered, help: cfg.help("list", args, mapped) });
+    return encode({ count: `${mapped.length} total`, [cfg.listKey]: filtered, help: cfg.help("list", args, mapped, ctx) });
   }
   if (verb === "get") {
     if (cfg.matchById) {
@@ -308,7 +298,7 @@ async function handleSubResource(verb: Verb, rawArgs: string[], cfg: SubResource
       // domain's records and match by id locally, returning the matched record
       // or the raw payload if not found.
       const [parent, id] = args;
-      const raw = await doctlJson<unknown>([...cfg.path, "list", parent], contextFlag);
+      const raw = await doctlJson<unknown>([...cfg.path, "list", parent], ctx?.context);
       const arr = extractArray(raw);
       const found =
         arr.find((it) => {
@@ -317,22 +307,22 @@ async function handleSubResource(verb: Verb, rawArgs: string[], cfg: SubResource
           }
           return false;
         }) ?? raw;
-      return encode({ [cfg.singularKey]: mapRow(found), help: cfg.help("get", args, []) });
+      return encode({ [cfg.singularKey]: mapRow(found), help: cfg.help("get", args, [], ctx) });
     }
-    const raw = await doctlJson<unknown>([...cfg.path, "get", ...args.slice(0, minArgs)], contextFlag);
+    const raw = await doctlJson<unknown>([...cfg.path, "get", ...args.slice(0, minArgs)], ctx?.context);
     const arr = extractArray(raw);
     const mapped = mapRow(arr[0] ?? raw);
     if (cfg.projectGet) {
       const filtered = projectFields([mapped], fields)[0];
-      return encode({ [cfg.singularKey]: filtered, help: cfg.help("get", args, [mapped]) });
+      return encode({ [cfg.singularKey]: filtered, help: cfg.help("get", args, [mapped], ctx) });
     }
     return encode({ [cfg.singularKey]: mapped });
   }
   if (verb === "create") {
-    const raw = await doctlJson<unknown>([...cfg.path, "create", ...args], contextFlag);
+    const raw = await doctlJson<unknown>([...cfg.path, "create", ...args], ctx?.context);
     const arr = extractArray(raw);
     const mapped = mapRow(arr[0] ?? raw);
-    const help = cfg.help("create", args, [mapped]);
+    const help = cfg.help("create", args, [mapped], ctx);
     return help.length > 0 ? encode({ [cfg.singularKey]: mapped, help }) : encode({ [cfg.singularKey]: mapped });
   }
 
@@ -342,15 +332,15 @@ async function handleSubResource(verb: Verb, rawArgs: string[], cfg: SubResource
   // doctl delete requires --force to avoid prompt; add unless the sub omits it
   if (!cfg.omitForce) argv.push("--force");
   const deletedId = ids[ids.length - 1];
-  const raw = await doctlDelete<unknown>(argv, contextFlag);
+  const raw = await doctlDelete<unknown>(argv, ctx?.context);
   if (raw === null) {
     return encode({
       delete: "already_deleted",
       [cfg.singularKey]: deletedId,
       ...(cfg.alreadyExtra?.(args) ?? {}),
-      help: cfg.help("delete", args, []),
+      help: cfg.help("delete", args, [], ctx),
     });
   }
-  if (cfg.deleteSuccessHelp) return encode({ deleted: deletedId, help: cfg.help("delete", args, []) });
+  if (cfg.deleteSuccessHelp) return encode({ deleted: deletedId, help: cfg.help("delete", args, [], ctx) });
   return encode({ deleted: deletedId });
 }

@@ -1,4 +1,5 @@
 import { doctlJson } from "./doctl.js";
+import { suggest } from "./suggestions.js";
 
 const PLACEHOLDER = "—";
 
@@ -64,16 +65,16 @@ function engineBuckets(raw: unknown): string {
   return keys.map((k) => `${k}=${counts[k]}`).join(", ");
 }
 
-export async function buildDashboardPayload(): Promise<Record<string, unknown>> {
+export async function buildDashboardPayload(context?: string): Promise<Record<string, unknown>> {
   const fetches: Promise<unknown>[] = [
-    doctlJson<unknown>(["account", "get"]).catch(() => null),
-    doctlJson<unknown>(["balance", "get"]).catch(() => null),
-    doctlJson<unknown>(["compute", "droplet", "list"]).catch(() => null),
-    doctlJson<unknown>(["apps", "list"]).catch(() => null),
-    doctlJson<unknown>(["databases", "list"]).catch(() => null),
-    doctlJson<unknown>(["kubernetes", "cluster", "list"]).catch(() => null),
-    doctlJson<unknown>(["registry", "repository", "list-v2"]).catch(() => null),
-    doctlJson<unknown>(["compute", "domain", "list"]).catch(() => null),
+    doctlJson<unknown>(["account", "get"], context).catch(() => null),
+    doctlJson<unknown>(["balance", "get"], context).catch(() => null),
+    doctlJson<unknown>(["compute", "droplet", "list"], context).catch(() => null),
+    doctlJson<unknown>(["apps", "list"], context).catch(() => null),
+    doctlJson<unknown>(["databases", "list"], context).catch(() => null),
+    doctlJson<unknown>(["kubernetes", "cluster", "list"], context).catch(() => null),
+    doctlJson<unknown>(["registry", "repository", "list-v2"], context).catch(() => null),
+    doctlJson<unknown>(["compute", "domain", "list"], context).catch(() => null),
   ];
 
   const results = await Promise.allSettled(fetches);
@@ -117,7 +118,7 @@ export async function buildDashboardPayload(): Promise<Record<string, unknown>> 
     kubernetes: { count: k8sCount },
     registry: { count: registryCount },
     domain: { count: domainCount },
-    help: ["doctl-axi droplet list"],
+    help: [suggest({ context }, "droplet list")],
   };
 
   return payload;

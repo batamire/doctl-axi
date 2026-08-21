@@ -32,6 +32,7 @@
   },
   "scripts": {
     "build": "tsc && chmod +x dist/bin/doctl-axi.js && tsx scripts/build-skill.ts",
+    "build:skill": "tsx scripts/build-skill.ts",
     "test": "pnpm build && vitest run",
     "dev": "tsx src/bin/doctl-axi.ts"
   },

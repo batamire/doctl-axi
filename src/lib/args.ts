@@ -60,6 +60,49 @@ export function takeFlagValue(args: string[], flag: string): string | undefined 
   return undefined;
 }
 
+/** Resolved doctl context, parsed once in cli.ts and threaded to every command. */
+export type DoctlContext = { context?: string };
+
+export interface ParsedContextArgs {
+  context?: string;
+  strippedArgs: string[];
+}
+
+/**
+ * Strip the global `--context <name>` / `--context=<name>` flag (placed AFTER
+ * the command) from args, mirroring gh-axi's parseRepoContextArgs. `--help`
+ * passes through untouched; a valueless `--context` is a VALIDATION_ERROR.
+ */
+export function parseContextArgs(args: string[]): ParsedContextArgs {
+  const stripped: string[] = [];
+  let context: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--") {
+      stripped.push(...args.slice(i));
+      break;
+    }
+    if (arg === "--context" && i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      context = args[i + 1];
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--context=")) {
+      const value = arg.slice("--context=".length);
+      if (value.length === 0) {
+        throw new AxiError("Missing value for --context", "VALIDATION_ERROR", []);
+      }
+      context = value;
+      continue;
+    }
+    if (arg === "--context") {
+      throw new AxiError("Missing value for --context", "VALIDATION_ERROR", []);
+    }
+    stripped.push(arg);
+  }
+  return { context, strippedArgs: stripped };
+}
+
 /**
  * Parse and validate a `--fields` value against the allowed field names.
  * Returns null when no value was given; throws VALIDATION_ERROR on an

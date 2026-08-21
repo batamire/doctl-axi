@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { encode } from "@toon-format/toon";
 import { AxiError, installSessionStartHooks } from "axi-sdk-js";
+import { suggest } from "../lib/suggestions.js";
 
 export const SETUP_HELP = encode({
   command: "setup",
@@ -77,14 +78,14 @@ function hookStatusPayload(drift: boolean, details: Record<string, unknown>): st
       code: "DRIFT",
       status: "drift detected",
       hooks: details,
-      help: ["doctl-axi setup hooks to reinstall"],
+      help: [suggest(undefined, "setup hooks", "to reinstall")],
     });
   }
   return encode({
     code: "OK",
     status: "hooks installed",
     hooks: details,
-    help: ["doctl-axi setup hooks --check to verify"],
+    help: [suggest(undefined, "setup hooks --check", "to verify")],
   });
 }
 

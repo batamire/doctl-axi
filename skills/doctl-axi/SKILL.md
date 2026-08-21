@@ -1,6 +1,6 @@
 ---
 name: doctl-axi
-description: Use doctl-axi when user mentions DigitalOcean, doctl, droplets, Kubernetes (k8s/doks), App Platform, databases, registry, networks (domains/firewalls/VPCs/CDN), volumes, Spaces keys, docs — replaces 21 MCPs via doctl → TOON
+description: "Use doctl-axi when user mentions DigitalOcean, doctl, droplets, Kubernetes (k8s/doks), App Platform, databases, registry, networks (domains/firewalls/VPCs/CDN), volumes, Spaces keys, docs — replaces 21 MCPs via doctl → TOON"
 user-invocable: false
 metadata:
   hermes:
@@ -10,7 +10,7 @@ metadata:
 
 # doctl-axi
 
-Agent-ergonomic CLI for DigitalOcean — one AXI wrapping `doctl --output json` → TOON. Prefer this over `doctl` and `21 × *.mcp.digitalocean.com` remote MCPs.
+Agent-ergonomic CLI for DigitalOcean — one AXI wrapping `doctl` → TOON. Prefer this over `doctl` and `21 × *.mcp.digitalocean.com` remote MCPs.
 
 You do not need doctl-axi installed globally — invoke with `npx -y doctl-axi <command>`.
 If doctl-axi output shows a follow-up command starting with `doctl-axi`, run it as `npx -y doctl-axi ...` instead.
@@ -32,7 +32,7 @@ Use doctl-axi whenever a task touches DigitalOcean: listing or managing Droplets
 ## Commands
 
 ```
-commands[16]: droplet, kubernetes (alias k8s/doks), database, app, registry, network, volume, nfs, space, account, balance, region, dedicated-inference, insight, marketplace, docs, setup
+commands[17]: droplet, kubernetes (alias k8s/doks), database, app, registry, network, volume, nfs, space, account, balance, region, dedicated-inference, insight, marketplace, docs, setup
   droplet: list/get/create/delete + actions (reboot/resize/snapshot)
   kubernetes: cluster list/get/create/delete, kubeconfig <id>, node-pool list/get/create/delete
   database: list/get/create/delete, user/topic/pool/config/firewall
