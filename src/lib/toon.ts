@@ -9,6 +9,23 @@ export function truncateField(value: string, full: boolean): string {
   return `${value.slice(0, TRUNCATION_LIMIT)}... [truncated ${truncated} chars, use --full]`;
 }
 
+// Single shared path-extraction helper. Walks `path` through nested objects;
+// a string encountered at any level is terminal; an object at the end of the
+// path yields its `slug` when that is a string. Replaces the per-noun
+// extract*Region family.
+function extractAt(raw: unknown, full: boolean, ...path: string[]): string {
+  let cur: unknown = raw;
+  for (const key of path) {
+    if (typeof cur === "string") return truncateField(cur, full);
+    if (!cur || typeof cur !== "object") return "";
+    cur = (cur as Record<string, unknown>)[key];
+  }
+  if (typeof cur === "string") return truncateField(cur, full);
+  const obj = cur as Record<string, unknown> | null;
+  if (obj && typeof obj.slug === "string") return truncateField(obj.slug, full);
+  return "";
+}
+
 export type DropletRaw = {
   id?: number | string;
   name?: string;
@@ -27,16 +44,6 @@ export type DropletToon = {
   size: string;
 };
 
-function extractRegion(raw: DropletRaw, full: boolean): string {
-  const r = raw.region;
-  if (typeof r === "string") return truncateField(r, full);
-  if (r && typeof r === "object" && "slug" in r) {
-    const slug = (r as { slug?: unknown }).slug;
-    if (typeof slug === "string") return truncateField(slug, full);
-  }
-  return "";
-}
-
 function extractSize(raw: DropletRaw, full: boolean): string {
   if (typeof raw.size_slug === "string") return truncateField(raw.size_slug, full);
   const s = raw.size;
@@ -52,7 +59,7 @@ export function toDropletToon(raw: DropletRaw, full: boolean): DropletToon {
   const idRaw = raw.id;
   const id = idRaw !== undefined && idRaw !== null ? String(idRaw) : "";
   const nameRaw = typeof raw.name === "string" ? raw.name : "";
-  const region = extractRegion(raw, full);
+  const region = extractAt(raw, full, "region");
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   const size = extractSize(raw, full);
 
@@ -115,16 +122,6 @@ export type VolumeToon = {
   status: string;
 };
 
-function extractVolumeRegion(raw: VolumeRaw, full: boolean): string {
-  const r = raw.region;
-  if (typeof r === "string") return truncateField(r, full);
-  if (r && typeof r === "object" && "slug" in r) {
-    const slug = (r as { slug?: unknown }).slug;
-    if (typeof slug === "string") return truncateField(slug, full);
-  }
-  return "";
-}
-
 function extractVolumeSize(raw: VolumeRaw, full: boolean): string {
   const sz = raw.size_gigabytes ?? raw.size;
   if (sz !== undefined && sz !== null) return truncateField(String(sz), full);
@@ -137,7 +134,7 @@ export function toVolumeToon(raw: VolumeRaw, full: boolean): VolumeToon {
   return {
     id: full ? id : truncateField(id, full),
     name: truncateField(typeof raw.name === "string" ? raw.name : "", full),
-    region: extractVolumeRegion(raw, full),
+    region: extractAt(raw, full, "region"),
     size: extractVolumeSize(raw, full),
     status: truncateField(typeof raw.status === "string" ? raw.status : "", full),
   };
@@ -161,22 +158,12 @@ export type NfsToon = {
   status: string;
 };
 
-function extractNfsRegion(raw: NfsRaw, full: boolean): string {
-  const r = raw.region;
-  if (typeof r === "string") return truncateField(r, full);
-  if (r && typeof r === "object" && "slug" in r) {
-    const slug = (r as { slug?: unknown }).slug;
-    if (typeof slug === "string") return truncateField(slug, full);
-  }
-  return "";
-}
-
 export function toNfsToon(raw: NfsRaw, full: boolean): NfsToon {
   const idRaw = raw.id;
   return {
     id: full ? String(idRaw ?? "") : truncateField(String(idRaw ?? ""), full),
     name: truncateField(typeof raw.name === "string" ? raw.name : "", full),
-    region: extractNfsRegion(raw, full),
+    region: extractAt(raw, full, "region"),
     status: truncateField(typeof raw.status === "string" ? raw.status : "", full),
   };
 }
@@ -233,22 +220,12 @@ export type DedicatedInferenceToon = {
   status: string;
 };
 
-function extractDIRegion(raw: DedicatedInferenceRaw, full: boolean): string {
-  const r = raw.region;
-  if (typeof r === "string") return truncateField(r, full);
-  if (r && typeof r === "object" && "slug" in r) {
-    const slug = (r as { slug?: unknown }).slug;
-    if (typeof slug === "string") return truncateField(slug, full);
-  }
-  return "";
-}
-
 export function toDedicatedInferenceToon(raw: DedicatedInferenceRaw, full: boolean): DedicatedInferenceToon {
   const idRaw = raw.id;
   return {
     id: full ? String(idRaw ?? "") : truncateField(String(idRaw ?? ""), full),
     name: truncateField(typeof raw.name === "string" ? raw.name : "", full),
-    region: extractDIRegion(raw, full),
+    region: extractAt(raw, full, "region"),
     status: truncateField(typeof raw.status === "string" ? raw.status : "", full),
   };
 }
@@ -523,16 +500,6 @@ export type NetworkReservedIpToon = {
   dropletId: string;
 };
 
-function extractNetworkRegion(raw: { region?: unknown }, full: boolean): string {
-  const r = (raw as { region?: unknown }).region;
-  if (typeof r === "string") return truncateField(r, full);
-  if (r && typeof r === "object" && "slug" in (r as Record<string, unknown>)) {
-    const slug = (r as { slug?: unknown }).slug;
-    if (typeof slug === "string") return truncateField(slug, full);
-  }
-  return "";
-}
-
 export function toNetworkDomainToon(raw: NetworkDomainRaw, full: boolean): NetworkDomainToon {
   const nameRaw = typeof raw.name === "string" ? raw.name : typeof raw.domain === "string" ? raw.domain : "";
   const ttlRaw = raw.ttl !== undefined && raw.ttl !== null ? String(raw.ttl) : "";
@@ -573,7 +540,7 @@ export function toNetworkFirewallToon(raw: NetworkFirewallRaw, full: boolean): N
 export function toNetworkLoadBalancerToon(raw: NetworkLoadBalancerRaw, full: boolean): NetworkLoadBalancerToon {
   const idRaw = raw.id !== undefined && raw.id !== null ? String(raw.id) : "";
   const nameRaw = typeof raw.name === "string" ? raw.name : "";
-  const region = extractNetworkRegion(raw as { region?: unknown }, full);
+  const region = extractAt(raw, full, "region");
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   return {
     id: full ? idRaw : truncateField(idRaw, full),
@@ -637,7 +604,7 @@ export function toNetworkCertificateToon(raw: NetworkCertificateRaw, full: boole
 
 export function toNetworkReservedIpToon(raw: NetworkReservedIpRaw, full: boolean): NetworkReservedIpToon {
   const ipRaw = typeof raw.ip === "string" ? raw.ip : "";
-  const region = extractNetworkRegion(raw as { region?: unknown }, full);
+  const region = extractAt(raw, full, "region");
   let dropletId = "";
   if (raw.droplet && typeof raw.droplet === "object" && "id" in raw.droplet) {
     const did = (raw.droplet as { id?: unknown }).id;
@@ -673,16 +640,6 @@ export type AppToon = {
   activeDeployment: string;
 };
 
-function extractAppRegion(raw: AppRaw, full: boolean): string {
-  const r = raw.region;
-  if (typeof r === "string") return truncateField(r, full);
-  if (r && typeof r === "object" && "slug" in (r as Record<string, unknown>)) {
-    const slug = (r as { slug?: unknown }).slug;
-    if (typeof slug === "string") return truncateField(slug, full);
-  }
-  return "";
-}
-
 function extractAppName(raw: AppRaw, full: boolean): string {
   if (typeof raw.name === "string") return truncateField(raw.name, full);
   if (raw.spec && typeof raw.spec === "object" && "name" in raw.spec) {
@@ -717,7 +674,7 @@ export function toAppToon(raw: AppRaw, full: boolean): AppToon {
   return {
     id: full ? id : truncateField(id, full),
     name: extractAppName(raw, full),
-    region: extractAppRegion(raw, full),
+    region: extractAt(raw, full, "region"),
     phase: extractAppPhase(raw, full),
     activeDeployment: extractAppActiveDeployment(raw, full),
   };
@@ -943,21 +900,11 @@ export type NodePoolToon = {
   status: string;
 };
 
-function extractK8sRegion(raw: KubernetesRaw, full: boolean): string {
-  const r = raw.region;
-  if (typeof r === "string") return truncateField(r, full);
-  if (r && typeof r === "object" && "slug" in r) {
-    const slug = (r as { slug?: unknown }).slug;
-    if (typeof slug === "string") return truncateField(slug, full);
-  }
-  return "";
-}
-
 export function toKubernetesToon(raw: KubernetesRaw, full: boolean): KubernetesToon {
   const idRaw = raw.id;
   const id = idRaw !== undefined && idRaw !== null ? String(idRaw) : "";
   const nameRaw = typeof raw.name === "string" ? raw.name : "";
-  const region = extractK8sRegion(raw, full);
+  const region = extractAt(raw, full, "region");
   const statusRaw = typeof raw.status === "string" ? raw.status : "";
   return {
     id: full ? id : truncateField(id, full),
@@ -1077,32 +1024,3 @@ export function toNodePoolToon(raw: NodePoolRaw, full: boolean): NodePoolToon {
   };
 }
 
-export function filterKubernetesFields(
-  items: KubernetesToon[],
-  fields: string[] | null,
-): Record<string, unknown>[] {
-  if (!fields || fields.length === 0) return items as unknown as Record<string, unknown>[];
-  const allowed = new Set(fields.map((f) => f.trim()).filter(Boolean));
-  return items.map((d) => {
-    const obj: Record<string, unknown> = {};
-    for (const key of Object.keys(d) as Array<keyof KubernetesToon>) {
-      if (allowed.has(key)) obj[key] = d[key];
-    }
-    return obj;
-  });
-}
-
-export function filterDatabaseFields(
-  items: DatabaseToon[],
-  fields: string[] | null,
-): Record<string, unknown>[] {
-  if (!fields || fields.length === 0) return items as unknown as Record<string, unknown>[];
-  const allowed = new Set(fields.map((f) => f.trim()).filter(Boolean));
-  return items.map((d) => {
-    const obj: Record<string, unknown> = {};
-    for (const key of Object.keys(d) as Array<keyof DatabaseToon>) {
-      if (allowed.has(key)) obj[key] = d[key];
-    }
-    return obj;
-  });
-}
