@@ -33,14 +33,6 @@ jobs:
           if npm view "doctl-axi@$VERSION" version >/dev/null 2>&1; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
-      # TEMP DEBUG: decode OIDC claims to verify Trusted Publisher match
-      - name: Debug OIDC claims
-        if: steps.tag.outputs.skip != 'true'
-        run: |
-          RESP=$(curl -sf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org")
-          echo "$RESP" | jq -r .value | python3 -c \
-            "import sys,base64,json;p=sys.stdin.read().strip().split('.')[1];p+='='*(-len(p)%4);print(json.dumps(json.loads(base64.urlsafe_b64decode(p)),indent=2))"
       - uses: actions/checkout@v4
         if: steps.tag.outputs.skip != 'true'
         with:
