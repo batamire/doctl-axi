@@ -86,10 +86,11 @@ async function volumeList(rawArgs: string[], ctx?: DoctlContext): Promise<string
 
 async function volumeGet(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return VOLUME_HELP;
-  // get expects id positional, flags allowed
   const args = [...rawArgs];
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi volume get --help` for available flags");
   const full = takeBoolFlag(args, "--full");
+  const fieldsArg = takeFlagValue(args, "--fields");
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const id = args[0];
   if (!id) {
     throw new AxiError("Missing id for volume get", "VALIDATION_ERROR", ["Usage: doctl-axi volume get <id>"]);
@@ -98,9 +99,11 @@ async function volumeGet(rawArgs: string[], ctx?: DoctlContext): Promise<string>
     throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi volume get --help`"]);
   }
   const raw = await doctlJson<unknown>(["compute", "volume", "get", id], ctx?.context);
-  const obj = raw !== null && typeof raw === "object" && "volume" in (raw as Record<string, unknown>)
-    ? ((raw as Record<string, unknown>).volume as unknown)
-    : raw;
+  const unwrapped = Array.isArray(raw) ? (raw[0] as unknown) : raw;
+  const obj = unwrapped !== null && typeof unwrapped === "object" && "volume" in (unwrapped as Record<string, unknown>)
+    ? ((unwrapped as Record<string, unknown>).volume as unknown)
+    : unwrapped;
   const mapped = toVolumeToon(obj as never, full);
-  return encode({ volume: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi volume list", "for overview")] });
+  const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
+  return encode({ volume: filtered as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi volume list", "for overview")] });
 }

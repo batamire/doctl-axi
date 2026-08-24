@@ -130,7 +130,8 @@ async function appGet(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (!id) throw new AxiError("Missing id for app get", "VALIDATION_ERROR", ["Usage: doctl-axi app get <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get --help`"]);
   const raw = await doctlJson<unknown>(["apps", "get", id], ctx?.context);
-  const obj = raw !== null && typeof raw === "object" && "app" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).app : raw;
+  const unwrapped = Array.isArray(raw) ? (raw[0] as unknown) : raw;
+  const obj = unwrapped !== null && typeof unwrapped === "object" && "app" in (unwrapped as Record<string, unknown>) ? (unwrapped as Record<string, unknown>).app : unwrapped;
   const mapped = toAppToon(obj as never, full);
   // if fields requested filter single
   const requested = fieldsArg !== undefined ? fieldsArg.split(",").map((s) => s.trim()).filter(Boolean) : null;
