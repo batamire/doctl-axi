@@ -1,18 +1,17 @@
 import { suggest } from "../lib/suggestions.js";
 import { AxiError } from "axi-sdk-js";
-import { doctlDelete, doctlJson, doctlRaw, unwrapArray } from "../lib/doctl.js";
+import { doctlDelete, doctlJson, doctlRaw, mapDoctlError, unwrapArray } from "../lib/doctl.js";
 import { projectFields, truncateField } from "../lib/mappers/common.js";
 import { toAppToon, toAppDeploymentToon } from "../lib/mappers/app.js";
 import { encode } from "@toon-format/toon";
 import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue, type DoctlContext } from "../lib/args.js";
 
-const ALLOWED_FIELDS = ["id", "name", "region", "phase", "activeDeployment"];
+const ALLOWED_FIELDS = ["id", "name", "region", "phase", "activeDeployment", "components"];
 const ALLOWED_FIELDS_DEPLOY = ["id", "phase", "cause", "progress"];
 // logs accept their own flags (--type, --tail, ...); unknown flags still error
-const LOG_FLAGS = ["--full", "--fields", "--type", "--tail", "--deployment", "--follow", "--no-prefix", "--event-id", "--job-invocation"];
+const LOG_FLAGS = ["--full", "--fields", "--type", "--tail", "--deployment", "--follow", "--no-prefix", "--event-id", "--job-invocation", "--context"];
 
 const ALLOWED_FLAGS = ["--full", "--fields", "--spec"];
-
 export const APP_HELP = encode({
   command: "app",
   description: "Manage App Platform applications",
@@ -26,11 +25,16 @@ export const APP_HELP = encode({
     "list-deployments": "List deployments for an app",
     "get-deployment": "Get a deployment",
     "create-deployment": "Create a deployment",
-    logs: "Get logs for an app",
+    logs: "Get logs for an app — doctl-axi app logs <id> [component] [--type build|deploy|run] [--tail N] [--deployment <id>] [--follow]",
   },
   flags: {
     "--full": "Disable truncation (show complete field values)",
-    "--fields": "Comma-separated fields to display (id,name,region,phase,activeDeployment)",
+    "--fields": "Comma-separated fields to display (id,name,region,phase,activeDeployment,components)",
+    "--type": "Log type for app logs: build|deploy|run (default run)",
+    "--tail": "Number of log lines from end (default -1 all)",
+    "--deployment": "Deployment ID for logs",
+    "--follow": "Follow logs as emitted",
+    "--no-prefix": "Remove component prefix from logs",
     "--context": "doctl context name",
   },
   examples: [
@@ -38,10 +42,12 @@ export const APP_HELP = encode({
     "doctl-axi app list --fields id,name",
     "doctl-axi app list --full",
     "doctl-axi app get <id>",
+    "doctl-axi app get <id> --fields id,name,components",
     "doctl-axi app logs <id>",
+    "doctl-axi app logs <id> <component> --type run --tail 100",
+    "doctl-axi app logs <id> --follow",
   ],
 });
-
 
 export async function appCommand(args: string[], ctx?: DoctlContext): Promise<string> {
   const sub = args[0];
@@ -123,7 +129,7 @@ async function appGet(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (fieldsArg !== undefined) {
     const requested = fieldsArg.split(",").map((s) => s.trim()).filter(Boolean);
     for (const f of requested) {
-      if (!ALLOWED_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", ["Available: id,name,region,phase,activeDeployment"]);
+      if (!ALLOWED_FIELDS.includes(f)) throw new AxiError(`Unknown field: ${f}`, "VALIDATION_ERROR", [`Available: ${ALLOWED_FIELDS.join(",")}`]);
     }
   }
   const id = args[0];
@@ -239,28 +245,68 @@ async function appCreateDeployment(rawArgs: string[], ctx?: DoctlContext): Promi
 
 async function appLogs(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
-  // logs accept their own flags (--type, --tail, ...); unknown flags still error
   const args = [...rawArgs];
   rejectUnknownFlags(args, LOG_FLAGS, "Run `doctl-axi app logs --help` for available flags");
   const full = takeBoolFlag(args, "--full");
+  // --fields is accepted for consistency but not used for logs (logs are text)
+  takeFlagValue(args, "--fields");
+  const typeVal = takeFlagValue(args, "--type");
+  const tailVal = takeFlagValue(args, "--tail");
+  const deploymentVal = takeFlagValue(args, "--deployment");
+  const eventIdVal = takeFlagValue(args, "--event-id");
+  const jobInvocationVal = takeFlagValue(args, "--job-invocation");
+  const follow = takeBoolFlag(args, "--follow");
+  const noPrefix = takeBoolFlag(args, "--no-prefix");
 
-  const positional = args.filter((a) => !a.startsWith("-"));
-  const appId = positional[0];
-  const component = positional[1];
-  if (!appId) throw new AxiError("Missing id for app logs", "VALIDATION_ERROR", ["Usage: doctl-axi app logs <id> [component]"]);
+  if (args.length === 0) throw new AxiError("Missing id for app logs", "VALIDATION_ERROR", ["Usage: doctl-axi app logs <id> [component]"]);
+  const appId = args[0];
+  const component = args[1];
+  if (args.length > 2) throw new AxiError(`Unexpected argument: ${args[2]}`, "VALIDATION_ERROR", ["Run `doctl-axi app logs --help`"]);
+
   const baseArgs = ["apps", "logs", appId];
   if (component) baseArgs.push(component);
+  if (typeVal !== undefined) baseArgs.push("--type", typeVal);
+  if (tailVal !== undefined) baseArgs.push("--tail", tailVal);
+  if (deploymentVal !== undefined) baseArgs.push("--deployment", deploymentVal);
+  if (eventIdVal !== undefined) baseArgs.push("--event-id", eventIdVal);
+  if (jobInvocationVal !== undefined) baseArgs.push("--job-invocation", jobInvocationVal);
+  if (follow) baseArgs.push("--follow");
+  if (noPrefix) baseArgs.push("--no-prefix");
+
   const result = await doctlRaw(baseArgs, ctx?.context);
-  // result contains stdout+stderr; try to parse if json
+  const combined = `${result.stdout} ${result.stderr}`.trim();
+  let parsed: unknown = null;
+  const out = result.stdout.trim() || result.stderr.trim();
+  if (out.length > 0) {
+    try { parsed = JSON.parse(out); } catch {}
+  }
+  if (parsed !== null && typeof parsed === "object" && parsed !== null && "errors" in parsed) {
+    const errors = (parsed as { errors?: unknown }).errors;
+    if (Array.isArray(errors) && errors.length > 0) {
+      const first = errors[0] as unknown;
+      let detail = "";
+      if (typeof first === "string") detail = first;
+      else if (first && typeof first === "object" && "detail" in first) {
+        const d = (first as { detail?: unknown }).detail;
+        if (typeof d === "string") detail = d;
+      } else {
+        try { detail = JSON.stringify(first); } catch { detail = String(first); }
+      }
+      throw mapDoctlError(detail || combined);
+    }
+  }
+  if (result.exitCode !== 0) {
+    throw mapDoctlError(combined || `doctl exited with code ${result.exitCode}`);
+  }
   let logsText = result.stdout.trim();
   if (logsText.length === 0 && result.stderr.trim().length > 0) logsText = result.stderr.trim();
   try {
-    const parsed = JSON.parse(logsText);
-    if (parsed && typeof parsed === "object" && "logs" in (parsed as Record<string, unknown>)) {
-      const l = (parsed as Record<string, unknown>).logs;
+    const p = JSON.parse(logsText);
+    if (p && typeof p === "object" && "logs" in p) {
+      const l = (p as { logs?: unknown }).logs;
       if (typeof l === "string") logsText = l;
-    } else if (typeof parsed === "string") {
-      logsText = parsed;
+    } else if (typeof p === "string") {
+      logsText = p;
     }
   } catch {}
   const display = truncateField(logsText, full);

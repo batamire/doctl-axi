@@ -5,7 +5,14 @@ import { truncateField, str, val, extractAt } from "./common.js";
 
 export type AppRaw = {
   id?: string;
-  spec?: { name?: string };
+  spec?: {
+    name?: string;
+    services?: Array<{ name?: string }>;
+    workers?: Array<{ name?: string }>;
+    static_sites?: Array<{ name?: string }>;
+    jobs?: Array<{ name?: string }>;
+    functions?: Array<{ name?: string }>;
+  };
   name?: string;
   region?: string | { slug?: string; label?: string };
   tier_slug?: string;
@@ -21,6 +28,7 @@ export type AppToon = {
   region: string;
   phase: string;
   activeDeployment: string;
+  components: string;
 };
 
 function extractAppName(raw: AppRaw, full: boolean): string {
@@ -34,7 +42,7 @@ function extractAppName(raw: AppRaw, full: boolean): string {
 
 function extractAppPhase(raw: AppRaw, full: boolean): string {
   const ad = raw.active_deployment ?? raw.activeDeployment;
-  if (ad && typeof ad === "object" && "phase" in (ad as Record<string, unknown>)) {
+  if (ad && typeof ad === "object" && "phase" in ad) {
     const p = (ad as { phase?: unknown }).phase;
     if (typeof p === "string") return truncateField(p, full);
   }
@@ -44,11 +52,30 @@ function extractAppPhase(raw: AppRaw, full: boolean): string {
 
 function extractAppActiveDeployment(raw: AppRaw, full: boolean): string {
   const ad = raw.active_deployment ?? raw.activeDeployment;
-  if (ad && typeof ad === "object" && "id" in (ad as Record<string, unknown>)) {
+  if (ad && typeof ad === "object" && "id" in ad) {
     const id = (ad as { id?: unknown }).id;
     if (id !== undefined && id !== null) return truncateField(String(id), full);
   }
   return "";
+}
+
+function extractComponents(raw: AppRaw, full: boolean): string {
+  const spec = raw.spec;
+  if (!spec || typeof spec !== "object") return "";
+  const parts: string[] = [];
+  const keys = ["services", "workers", "static_sites", "jobs", "functions"] as const;
+  for (const key of keys) {
+    if (!(key in spec)) continue;
+    const arr = (spec as Record<string, unknown>)[key];
+    if (!Array.isArray(arr)) continue;
+    for (const item of arr) {
+      if (!item || typeof item !== "object" || !("name" in item)) continue;
+      const n = (item as { name?: unknown }).name;
+      if (typeof n === "string" && n.length > 0) parts.push(n);
+    }
+  }
+  if (parts.length === 0) return "";
+  return truncateField(parts.join(", "), full);
 }
 
 export function toAppToon(raw: AppRaw, full: boolean): AppToon {
@@ -58,6 +85,7 @@ export function toAppToon(raw: AppRaw, full: boolean): AppToon {
     region: extractAt(raw, full, "region"),
     phase: extractAppPhase(raw, full),
     activeDeployment: extractAppActiveDeployment(raw, full),
+    components: extractComponents(raw, full),
   };
 }
 
