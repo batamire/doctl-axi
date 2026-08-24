@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2](https://github.com/batamire/doctl-axi/compare/v0.2.1...v0.2.2) (2026-08-24)
+
+
+### Bug Fixes
+
+* harden remaining get handlers to unwrap array and support --fields ([f6a8a4a](https://github.com/batamire/doctl-axi/commit/f6a8a4a1f70df3b825030169db0f2f38f4dd7fad))
+
 ## [0.2.1](https://github.com/batamire/doctl-axi/compare/v0.2.0...v0.2.1) (2026-08-24)
 
 
