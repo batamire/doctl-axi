@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.3](https://github.com/batamire/doctl-axi/compare/v0.2.2...v0.2.3) (2026-08-24)
+
+
+### Bug Fixes
+
+* make app logs component-aware and expose components via app get ([98f50a6](https://github.com/batamire/doctl-axi/commit/98f50a6bb195ddcd0298cd9d06c7c367354899cf))
+
 ## [0.2.2](https://github.com/batamire/doctl-axi/compare/v0.2.1...v0.2.2) (2026-08-24)
 
 
