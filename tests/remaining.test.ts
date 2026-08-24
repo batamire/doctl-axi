@@ -87,6 +87,33 @@ describe("remaining nouns CLI seam", () => {
     expect(String(decoded.error)).toContain("Unknown flag");
   });
 
+  it("volume get unwraps array and prints TOON, exit 0", () => {
+    const json = JSON.stringify([{ id: "vol-abc123", name: "my-volume", region: { slug: "nyc1" }, size_gigabytes: 100, status: "available" }]);
+    makeFakeDoctl(tmp, json, capture);
+    const res = runCli(["volume", "get", "vol-abc123"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
+    expect(res.status).toBe(0);
+    const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+    const volume = decoded.volume as Record<string, unknown>;
+    expect(volume.id).toBe("vol-abc123");
+    expect(volume.name).toBe("my-volume");
+    expect(volume.region).toBe("nyc1");
+    expect(volume.size).toBe("100");
+    const args = readFileSync(capture, "utf-8");
+    expect(args).toContain("compute volume get");
+    expect(args).toContain("vol-abc123");
+  });
+
+  it("volume get --fields filters TOON", () => {
+    const json = JSON.stringify([{ id: "vol-abc123", name: "my-volume", region: { slug: "nyc1" }, size_gigabytes: 100, status: "available" }]);
+    makeFakeDoctl(tmp, json);
+    const res = runCli(["volume", "get", "vol-abc123", "--fields", "id,name"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
+    expect(res.status).toBe(0);
+    const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+    const volume = decoded.volume as Record<string, unknown>;
+    expect(volume).toEqual({ id: "vol-abc123", name: "my-volume" });
+    expect(volume.region).toBeUndefined();
+  });
+
   it("volume AUTH_MISSING when no token and error payload", () => {
     makeFakeDoctlWithExit(tmp, JSON.stringify({ errors: [{ detail: "access token is required" }] }), 1);
     const res = runCli(["volume", "list"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: undefined, DIGITALOCEAN_API_TOKEN: undefined } });

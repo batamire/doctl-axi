@@ -217,11 +217,11 @@ async function appGetDeployment(rawArgs: string[], ctx?: DoctlContext): Promise<
   if (!appId || !depId) throw new AxiError("Missing id for app get-deployment", "VALIDATION_ERROR", ["Usage: doctl-axi app get-deployment <app-id> <deployment-id>"]);
   if (args.length > 2) throw new AxiError(`Unexpected argument: ${args[2]}`, "VALIDATION_ERROR", ["Run `doctl-axi app get-deployment --help`"]);
   const raw = await doctlJson<unknown>(["apps", "get-deployment", appId, depId], ctx?.context);
-  const obj = raw !== null && typeof raw === "object" && "deployment" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).deployment : raw;
+  const unwrapped = Array.isArray(raw) ? (raw[0] as unknown) : raw;
+  const obj = unwrapped !== null && typeof unwrapped === "object" && "deployment" in (unwrapped as Record<string, unknown>) ? (unwrapped as Record<string, unknown>).deployment : unwrapped;
   const mapped = toAppDeploymentToon((obj ?? {}) as never, full);
   return encode({ deployment: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, `app list-deployments ${appId}`, "for overview")] });
 }
-
 async function appCreateDeployment(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) return APP_HELP;
   const args = [...rawArgs];
@@ -231,7 +231,8 @@ async function appCreateDeployment(rawArgs: string[], ctx?: DoctlContext): Promi
   if (!id) throw new AxiError("Missing id for app create-deployment", "VALIDATION_ERROR", ["Usage: doctl-axi app create-deployment <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi app create-deployment --help`"]);
   const raw = await doctlJson<unknown>(["apps", "create-deployment", id], ctx?.context);
-  const obj = raw !== null && typeof raw === "object" && "deployment" in (raw as Record<string, unknown>) ? (raw as Record<string, unknown>).deployment : raw;
+  const unwrapped = Array.isArray(raw) ? (raw[0] as unknown) : raw;
+  const obj = unwrapped !== null && typeof unwrapped === "object" && "deployment" in (unwrapped as Record<string, unknown>) ? (unwrapped as Record<string, unknown>).deployment : unwrapped;
   const mapped = toAppDeploymentToon((obj ?? {}) as never, full);
   return encode({ deployment: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, `app get-deployment ${id} ${mapped.id}`, "for detail")] });
 }

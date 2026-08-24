@@ -32,7 +32,8 @@ async function accountGet(rawArgs: string[], ctx?: DoctlContext): Promise<string
   const full = takeBoolFlag(args, "--full");
   if (args.length > 0) throw new AxiError(`Unexpected argument: ${args[0]}`, "VALIDATION_ERROR", ["Run `doctl-axi account get --help`"]);
   const raw = await doctlJson<unknown>(["account", "get"], ctx?.context);
-  const obj = raw !== null && typeof raw === "object" && "account" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).account as unknown) : raw;
+  const unwrapped = Array.isArray(raw) ? (raw[0] as unknown) : raw;
+  const obj = unwrapped !== null && typeof unwrapped === "object" && "account" in (unwrapped as Record<string, unknown>) ? ((unwrapped as Record<string, unknown>).account as unknown) : unwrapped;
   const mapped = toAccountToon(obj as never, full);
   return encode({ account: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi balance get", "for billing")] });
 }

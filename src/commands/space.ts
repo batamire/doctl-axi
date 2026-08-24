@@ -15,7 +15,7 @@ export const SPACE_HELP = encode({
   usage: "doctl-axi space <subcommand> [flags]",
   subcommands: {
     "key list": "List Spaces keys",
-    "key get": "Get a Spaces key by name",
+    "key get": "Get a Spaces key by access key",
     "key create": "Create a Spaces key",
   },
   flags: {
@@ -26,7 +26,7 @@ export const SPACE_HELP = encode({
   examples: [
     "doctl-axi space key list",
     "doctl-axi space key list --fields name,created",
-    "doctl-axi space key get <name>",
+    "doctl-axi space key get <accessKey>",
   ],
 });
 
@@ -94,13 +94,17 @@ async function spaceKeyGet(rawArgs: string[], ctx?: DoctlContext): Promise<strin
   const args = [...rawArgs];
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi space key get --help` for available flags");
   const full = takeBoolFlag(args, "--full");
+  const fieldsArg = takeFlagValue(args, "--fields");
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const name = args[0];
   if (!name) throw new AxiError("Missing name for space key get", "VALIDATION_ERROR", ["Usage: doctl-axi space key get <name>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi space key get --help`"]);
   const raw = await doctlJson<unknown>(["spaces", "keys", "get", name], ctx?.context);
-  const obj = raw !== null && typeof raw === "object" && "key" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).key as unknown) : raw;
+  const unwrapped = Array.isArray(raw) ? (raw[0] as unknown) : raw;
+  const obj = unwrapped !== null && typeof unwrapped === "object" && "key" in (unwrapped as Record<string, unknown>) ? ((unwrapped as Record<string, unknown>).key as unknown) : unwrapped;
   const mapped = toSpaceKeyToon(obj as never, full);
-  return encode({ space: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi space key list", "for overview")] });
+  const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
+  return encode({ space: filtered as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi space key list", "for overview")] });
 }
 
 async function spaceKeyCreate(rawArgs: string[], ctx?: DoctlContext): Promise<string> {

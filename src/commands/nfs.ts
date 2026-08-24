@@ -65,13 +65,17 @@ async function nfsGet(rawArgs: string[], ctx?: DoctlContext): Promise<string> {
   const args = [...rawArgs];
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi nfs get --help` for available flags");
   const full = takeBoolFlag(args, "--full");
+  const fieldsArg = takeFlagValue(args, "--fields");
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const id = args[0];
   if (!id) throw new AxiError("Missing id for nfs get", "VALIDATION_ERROR", ["Usage: doctl-axi nfs get <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi nfs get --help`"]);
   const raw = await doctlJson<unknown>(["nfs", "get", id], ctx?.context);
-  const obj = raw !== null && typeof raw === "object" && "share" in (raw as Record<string, unknown>)
-    ? ((raw as Record<string, unknown>).share as unknown)
-    : raw;
+  const unwrapped = Array.isArray(raw) ? (raw[0] as unknown) : raw;
+  const obj = unwrapped !== null && typeof unwrapped === "object" && "share" in (unwrapped as Record<string, unknown>)
+    ? ((unwrapped as Record<string, unknown>).share as unknown)
+    : unwrapped;
   const mapped = toNfsToon(obj as never, full);
-  return encode({ nfs: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi nfs list", "for overview")] });
+  const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
+  return encode({ nfs: filtered as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi nfs list", "for overview")] });
 }

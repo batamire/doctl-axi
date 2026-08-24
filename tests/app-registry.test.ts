@@ -88,7 +88,7 @@ describe("doctl-axi app CLI seam", () => {
   });
 
   it("app get works", () => {
-    const json = JSON.stringify({ id: "app-111", spec: { name: "my-app" }, region: { slug: "nyc" }, active_deployment: { id: "dep-aaa", phase: "ACTIVE" } });
+    const json = JSON.stringify([{ id: "app-111", spec: { name: "my-app" }, region: { slug: "nyc" }, active_deployment: { id: "dep-aaa", phase: "ACTIVE" } }]);
     makeFakeDoctl(tmp, json, capture);
     const res = runCli(["app", "get", "app-111"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
     expect(res.status).toBe(0);

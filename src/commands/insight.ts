@@ -71,11 +71,15 @@ async function uptimeGet(rawArgs: string[], ctx?: DoctlContext): Promise<string>
   const args = [...rawArgs];
   rejectUnknownFlags(args, ALLOWED_FLAGS, "Run `doctl-axi insight uptime get --help` for available flags");
   const full = takeBoolFlag(args, "--full");
+  const fieldsArg = takeFlagValue(args, "--fields");
+  const fields = parseFields(fieldsArg, ALLOWED_FIELDS);
   const id = args[0];
   if (!id) throw new AxiError("Missing id for insight uptime get", "VALIDATION_ERROR", ["Usage: doctl-axi insight uptime get <id>"]);
   if (args.length > 1) throw new AxiError(`Unexpected argument: ${args[1]}`, "VALIDATION_ERROR", ["Run `doctl-axi insight uptime get --help`"]);
   const raw = await doctlJson<unknown>(["monitoring", "uptime", "get", id], ctx?.context);
-  const obj = raw !== null && typeof raw === "object" && "check" in (raw as Record<string, unknown>) ? ((raw as Record<string, unknown>).check as unknown) : raw;
+  const unwrapped = Array.isArray(raw) ? (raw[0] as unknown) : raw;
+  const obj = unwrapped !== null && typeof unwrapped === "object" && "check" in (unwrapped as Record<string, unknown>) ? ((unwrapped as Record<string, unknown>).check as unknown) : unwrapped;
   const mapped = toInsightToon(obj as never, full);
-  return encode({ check: mapped as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi insight uptime list", "for overview")] });
+  const filtered = projectFields([mapped as unknown as Record<string, unknown>], fields)[0];
+  return encode({ check: filtered as unknown as Record<string, unknown>, help: [suggest(ctx, "doctl-axi insight uptime list", "for overview")] });
 }
