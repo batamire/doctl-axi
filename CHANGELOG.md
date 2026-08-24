@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1](https://github.com/batamire/doctl-axi/compare/v0.2.0...v0.2.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* unwrap array response for app get and volume get ([70f5017](https://github.com/batamire/doctl-axi/commit/70f50175fb7f3ea97ccb57f78227390494dc1946))
+
 ## [0.2.0](https://github.com/batamire/doctl-axi/compare/v0.1.1...v0.2.0) (2026-08-22)
 
 
