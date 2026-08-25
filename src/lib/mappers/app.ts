@@ -28,6 +28,7 @@ export type AppToon = {
   region: string;
   phase: string;
   activeDeployment: string;
+  activeDeploymentPhase: string;
   components: string;
 };
 
@@ -49,12 +50,20 @@ function extractAppPhase(raw: AppRaw, full: boolean): string {
   if (typeof raw.phase === "string") return truncateField(raw.phase, full);
   return "";
 }
-
 function extractAppActiveDeployment(raw: AppRaw, full: boolean): string {
   const ad = raw.active_deployment ?? raw.activeDeployment;
   if (ad && typeof ad === "object" && "id" in ad) {
     const id = (ad as { id?: unknown }).id;
     if (id !== undefined && id !== null) return truncateField(String(id), full);
+  }
+  return "";
+}
+
+function extractActiveDeploymentPhase(raw: AppRaw, full: boolean): string {
+  const ad = raw.active_deployment ?? raw.activeDeployment;
+  if (ad && typeof ad === "object" && "phase" in ad) {
+    const p = (ad as { phase?: unknown }).phase;
+    if (typeof p === "string") return truncateField(p, full);
   }
   return "";
 }
@@ -85,6 +94,7 @@ export function toAppToon(raw: AppRaw, full: boolean): AppToon {
     region: extractAt(raw, full, "region"),
     phase: extractAppPhase(raw, full),
     activeDeployment: extractAppActiveDeployment(raw, full),
+    activeDeploymentPhase: extractActiveDeploymentPhase(raw, full),
     components: extractComponents(raw, full),
   };
 }

@@ -6,7 +6,7 @@ import { toAppToon, toAppDeploymentToon } from "../lib/mappers/app.js";
 import { encode } from "@toon-format/toon";
 import { parseFields, rejectUnknownFlags, takeBoolFlag, takeFlagValue, type DoctlContext } from "../lib/args.js";
 
-const ALLOWED_FIELDS = ["id", "name", "region", "phase", "activeDeployment", "components"];
+const ALLOWED_FIELDS = ["id", "name", "region", "phase", "activeDeployment", "activeDeploymentPhase", "components"];
 const ALLOWED_FIELDS_DEPLOY = ["id", "phase", "cause", "progress"];
 // logs accept their own flags (--type, --tail, ...); unknown flags still error
 const LOG_FLAGS = ["--full", "--fields", "--type", "--tail", "--deployment", "--follow", "--no-prefix", "--event-id", "--job-invocation", "--context"];
@@ -29,7 +29,7 @@ export const APP_HELP = encode({
   },
   flags: {
     "--full": "Disable truncation (show complete field values)",
-    "--fields": "Comma-separated fields to display (id,name,region,phase,activeDeployment,components)",
+    "--fields": "Comma-separated fields to display (id,name,region,phase,activeDeployment,activeDeploymentPhase,components)",
     "--type": "Log type for app logs: build|deploy|run (default run)",
     "--tail": "Number of log lines from end (default -1 all)",
     "--deployment": "Deployment ID for logs",
