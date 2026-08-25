@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0](https://github.com/batamire/doctl-axi/compare/v0.2.4...v0.3.0) (2026-08-25)
+
+
+### Features
+
+* add raw escape hatch forwarding verbatim to doctl ([79121d1](https://github.com/batamire/doctl-axi/commit/79121d1f1872751c63c964fd27eda49215a1f862))
+
 ## [0.2.4](https://github.com/batamire/doctl-axi/compare/v0.2.3...v0.2.4) (2026-08-25)
 
 
