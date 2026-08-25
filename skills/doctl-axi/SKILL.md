@@ -32,7 +32,7 @@ Use doctl-axi whenever a task touches DigitalOcean: listing or managing Droplets
 ## Commands
 
 ```
-commands[17]: droplet, kubernetes (alias k8s/doks), database, app, registry, network, volume, nfs, space, account, balance, region, dedicated-inference, insight, marketplace, docs, setup
+commands[18]: droplet, kubernetes (alias k8s/doks), database, app, registry, network, volume, nfs, space, account, balance, region, dedicated-inference, insight, marketplace, docs, setup, raw
   droplet: list/get/create/delete + actions (reboot/resize/snapshot)
   kubernetes: cluster list/get/create/delete, kubeconfig <id>, node-pool list/get/create/delete
   database: list/get/create/delete, user/topic/pool/config/firewall
@@ -42,6 +42,7 @@ commands[17]: droplet, kubernetes (alias k8s/doks), database, app, registry, net
   volume/nfs/space/account: list/get/create/delete (space is keys only)
   docs: search <q>, get <path>, find-for-service, get-quickstart, troubleshoot, get-related (fetch llms.txt, no token, 30m cache)
   setup: hooks, hooks --check
+  raw: <doctl args…> — escape hatch forwarding verbatim to doctl
 ```
 
 Installed copies also inherit the SDK built-in `update` command. Run `npx -y doctl-axi update --check` or `npx -y doctl-axi update`.

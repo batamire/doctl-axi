@@ -18,6 +18,7 @@ import { marketplaceCommand, MARKETPLACE_HELP } from "./commands/marketplace.js"
 import { appCommand, APP_HELP } from "./commands/app.js";
 import { registryCommand, REGISTRY_HELP } from "./commands/registry.js";
 import { setupCommand, SETUP_HELP } from "./commands/setup.js";
+import { rawCommand, RAW_HELP } from "./commands/raw.js";
 import { buildDashboardPayload } from "./lib/dashboard.js";
 import { parseContextArgs, type DoctlContext, type ParsedContextArgs } from "./lib/args.js";
 export const DESCRIPTION = "Agent-ergonomic CLI for DigitalOcean — one AXI wrapping doctl → TOON";
@@ -42,6 +43,7 @@ export const TOP_HELP = encode({
     marketplace: "List marketplace offerings",
     docs: "Search and fetch DigitalOcean documentation (no token required)",
     setup: "Manage doctl-axi setup including ambient hooks",
+    raw: "Escape hatch — forward args verbatim to doctl",
   },
   flags: {
     "--full": "Disable truncation (show complete field values)",
@@ -62,6 +64,7 @@ export const TOP_HELP = encode({
     "doctl-axi dedicated-inference list",
     "doctl-axi insight uptime list",
     "doctl-axi marketplace list",
+    "doctl-axi raw apps get <id> --format ActiveDeploymentPhase",
   ],
 });
 
@@ -85,6 +88,7 @@ const COMMAND_HELP: Record<string, string> = {
   insight: INSIGHT_HELP,
   marketplace: MARKETPLACE_HELP,
   setup: SETUP_HELP,
+  raw: RAW_HELP,
 };
 
 export const COMMANDS: Record<string, (args: string[], ctx?: DoctlContext) => Promise<string>> = {
@@ -107,6 +111,7 @@ export const COMMANDS: Record<string, (args: string[], ctx?: DoctlContext) => Pr
   insight: insightCommand,
   marketplace: marketplaceCommand,
   setup: setupCommand,
+  raw: withContext(rawCommand),
 };
 
 // Canonical per-noun command summary shared by TOP_HELP consumers and the
@@ -114,7 +119,7 @@ export const COMMANDS: Record<string, (args: string[], ctx?: DoctlContext) => Pr
 // The count is derived from COMMANDS (aliases excluded); the noun list and
 // verb summaries are hand-written because they carry detail COMMANDS lacks.
 const SUMMARY_ALIASES = ["k8s", "doks"];
-export const COMMAND_SUMMARY = `commands[${Object.keys(COMMANDS).filter((c) => !SUMMARY_ALIASES.includes(c)).length}]: droplet, kubernetes (alias k8s/doks), database, app, registry, network, volume, nfs, space, account, balance, region, dedicated-inference, insight, marketplace, docs, setup
+export const COMMAND_SUMMARY = `commands[${Object.keys(COMMANDS).filter((c) => !SUMMARY_ALIASES.includes(c)).length}]: droplet, kubernetes (alias k8s/doks), database, app, registry, network, volume, nfs, space, account, balance, region, dedicated-inference, insight, marketplace, docs, setup, raw
   droplet: list/get/create/delete + actions (reboot/resize/snapshot)
   kubernetes: cluster list/get/create/delete, kubeconfig <id>, node-pool list/get/create/delete
   database: list/get/create/delete, user/topic/pool/config/firewall
@@ -123,8 +128,8 @@ export const COMMAND_SUMMARY = `commands[${Object.keys(COMMANDS).filter((c) => !
   network: domain/record/certificate/firewall/load-balancer/vpc/peering/cdn/reserved-ip (each list/get/create/delete)
   volume/nfs/space/account: list/get/create/delete (space is keys only)
   docs: search <q>, get <path>, find-for-service, get-quickstart, troubleshoot, get-related (fetch llms.txt, no token, 30m cache)
-  setup: hooks, hooks --check`;
-
+  setup: hooks, hooks --check
+  raw: <doctl args…> — escape hatch forwarding verbatim to doctl`;
 type CommandFn = (args: string[], ctx?: DoctlContext) => Promise<string>;
 
 // Strip the global --context flag from args before the subcommand sees them;
