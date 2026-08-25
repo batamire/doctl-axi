@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.4](https://github.com/batamire/doctl-axi/compare/v0.2.3...v0.2.4) (2026-08-25)
+
+
+### Bug Fixes
+
+* expose activeDeploymentPhase via app get/list for deployment polling ([9826a17](https://github.com/batamire/doctl-axi/commit/9826a17f93eecb4b7dc7ef18b62e958cd840ae3c))
+
 ## [0.2.3](https://github.com/batamire/doctl-axi/compare/v0.2.2...v0.2.3) (2026-08-24)
 
 
