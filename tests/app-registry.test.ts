@@ -155,6 +155,26 @@ describe("doctl-axi app CLI seam", () => {
     expect(args).toContain("list-deployments");
   });
 
+  it("app list-deployments handles doctl JSON larger than 10 MiB", () => {
+    // Real deployment lists embed the full app spec per deployment; one app's
+    // response measured ~10.3 MiB. The old 10 MiB maxBuffer truncated stdout,
+    // and the truncated payload was then misread as a doctl error ("401"
+    // appears in the spec text) and reported as AUTH_MISSING.
+    const bigSpec = { name: "big-app", env: "x".repeat(11 * 1024 * 1024) + " 401" };
+    const json = JSON.stringify([
+      { id: "dep-big", phase: "ACTIVE", cause: "manual", progress: "done", spec: bigSpec },
+    ]);
+    makeFakeDoctl(tmp, json, capture);
+    const res = runCli(["app", "list-deployments", "app-111"], { fakeDir: tmp, env: { DIGITALOCEAN_ACCESS_TOKEN: "tok" } });
+    expect(res.stderr).not.toContain("AUTH_MISSING");
+    expect(res.status).toBe(0);
+    const decoded = decode(res.stdout.trim()) as Record<string, unknown>;
+    expect(decoded.count).toBe("1");
+    const deps = decoded.deployments as Array<Record<string, unknown>>;
+    expect(deps[0].id).toBe("dep-big");
+    expect(deps[0].phase).toBe("ACTIVE");
+  });
+
   it("app get-deployment works", () => {
     const json = JSON.stringify({ id: "dep-aaa", phase: "ACTIVE", cause: "manual", progress: "done" });
     makeFakeDoctl(tmp, json, capture);

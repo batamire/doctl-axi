@@ -2,7 +2,9 @@ import { execFile } from "node:child_process";
 import { fstatSync, readFileSync } from "node:fs";
 import { AxiError } from "axi-sdk-js";
 
-export const MAX_BUFFER = 10 * 1024 * 1024;
+// Doctl JSON embeds the full app spec in every deployment, so a single
+// `apps list-deployments` response can exceed 10 MiB (10.3 MiB observed).
+export const MAX_BUFFER = 256 * 1024 * 1024;
 
 /**
  * Unwrap a doctl payload to an array: an array passes through; an object
@@ -43,26 +45,35 @@ export function toExecResult(error: unknown, stdout: string, stderr: string): Ex
   if (e?.code === "ENOENT") {
     return { stdout: "", stderr: "ENOENT", exitCode: 127 };
   }
-  // 2. Exit status reported by the spawned process.
+  // 2. stdout/stderr exceeded maxBuffer. The captured bytes are a truncated
+  // payload, not a doctl error: never feed them to error classification.
+  if (e?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
+    return {
+      stdout: "",
+      stderr: `doctl output exceeded the ${MAX_BUFFER} byte buffer`,
+      exitCode: 1,
+    };
+  }
+  // 3. Exit status reported by the spawned process.
   const status = asExitCode(e?.status);
   if (status !== null) {
     return { stdout: out, stderr: err, exitCode: status };
   }
-  // 3. Numeric error code (e.g. killed by signal N).
+  // 4. Numeric error code (e.g. killed by signal N).
   const code = asExitCode(e?.code);
   if (code !== null) {
     return { stdout: out, stderr: err, exitCode: code };
   }
-  // 4. Numeric errno.
+  // 5. Numeric errno.
   const errno = asExitCode(e?.errno);
   if (errno !== null) {
     return { stdout: out, stderr: err, exitCode: errno };
   }
-  // 5. Any other error (non-numeric code/errno such as "EACCES"): generic failure.
+  // 6. Any other error (non-numeric code/errno such as "EACCES"): generic failure.
   if (e) {
     return { stdout: out, stderr: err, exitCode: 1 };
   }
-  // 6. Success.
+  // 7. Success.
   return { stdout: out, stderr: err, exitCode: 0 };
 }
 

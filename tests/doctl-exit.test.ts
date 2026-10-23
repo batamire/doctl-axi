@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toExecResult } from "../src/lib/doctl.js";
+import { toExecResult, MAX_BUFFER } from "../src/lib/doctl.js";
 
 describe("toExecResult exit-code resolution", () => {
   it("maps ENOENT (missing binary) to 127", () => {
@@ -20,6 +20,15 @@ describe("toExecResult exit-code resolution", () => {
 
   it("resolves non-numeric errno like ETIMEDOUT to generic failure (1)", () => {
     expect(toExecResult({ errno: "ETIMEDOUT" }, "", "").exitCode).toBe(1);
+  });
+
+  it("treats maxBuffer overflow as a failure, never as a doctl payload", () => {
+    const r = toExecResult({ code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" }, "{\"spec\":\"…401…\"", "");
+    expect(r).toEqual({
+      stdout: "",
+      stderr: `doctl output exceeded the ${MAX_BUFFER} byte buffer`,
+      exitCode: 1,
+    });
   });
 
   it("reports success status 0 as exit code 0", () => {
