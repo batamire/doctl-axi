@@ -1,7 +1,3 @@
-> **🧪 Proof of Concept - AXI Experiment built with AI**
->
-> This is an experimental proof-of-concept AXI (Agent Experience Interface) - an AI-built wrapper around `doctl` as an alternative to 21 fragmented MCP services. Not production-hardened; expect sharp edges, token truncation at 8k, and a `256 MB` doctl output cap. Use for evaluation and feedback, not critical deploys.
-
 # doctl-axi
 
 Agent-ergonomic CLI for DigitalOcean - one AXI wrapping `doctl --output json` → [TOON](https://github.com/toon-format/toon).
