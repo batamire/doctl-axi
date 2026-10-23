@@ -1,6 +1,6 @@
 {
   "name": "doctl-axi",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "type": "module",
   "description": "Agent-ergonomic CLI for DigitalOcean — one AXI wrapping doctl → TOON",

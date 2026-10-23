@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1](https://github.com/batamire/doctl-axi/compare/v0.3.0...v0.3.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* handle doctl output larger than the subprocess buffer ([72e2ed6](https://github.com/batamire/doctl-axi/commit/72e2ed6e4b14b7f85d6274603955fffa7fcede99))
+
 ## [0.3.0](https://github.com/batamire/doctl-axi/compare/v0.2.4...v0.3.0) (2026-08-25)
 
 
